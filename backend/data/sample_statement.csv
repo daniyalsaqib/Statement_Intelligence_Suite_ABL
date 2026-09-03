@@ -1,0 +1,7 @@
+date,description,debit,credit,balance
+2026-08-01,Opening Balance,,,50000
+2026-08-02,Netflix,1500,,48500
+2026-08-03,Salary,,80000,128500
+2026-08-05,Electricity Bill,12000,,116500
+2026-08-10,Spotify,500,,116000
+2026-08-15,Grocery Store,7500,,108500
