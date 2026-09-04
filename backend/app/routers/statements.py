@@ -9,7 +9,7 @@ router = APIRouter(
 )
 
 
-@router.post("/upload")
+@router.post("/upload") # POST /statement/upload
 async def upload_statement(file: UploadFile = File(...)):
     if not file.filename.lower().endswith(".csv"):
         raise HTTPException(
