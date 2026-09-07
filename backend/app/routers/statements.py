@@ -1,6 +1,7 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException
 
 from backend.app.services.statement_parser import parse_statement_csv
+from backend.app.services.statement_analysis import analyze_statement # debit credit
 
 
 router = APIRouter(
@@ -26,9 +27,13 @@ async def upload_statement(file: UploadFile = File(...)):
             status_code=400,
             detail=f"Could not parse statement: {str(e)}",
         )
-
+    
+    # Analyze the parsed statement
+    analysis = analyze_statement(transactions)
+    
     return {
         "filename": file.filename,
         "transaction_count": len(transactions),
         "transactions": transactions,
+        "analysis": analysis,
     }
