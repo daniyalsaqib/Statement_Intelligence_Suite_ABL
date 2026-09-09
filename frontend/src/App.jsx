@@ -23,9 +23,14 @@ function App() {
   const [policyQuestion, setPolicyQuestion] = useState("");
   const [policyResult, setPolicyResult] = useState(null);
 
-  // Shared UI state
+  // Shared loading state
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+
+  // Contextual error state
+  const [statementUploadError, setStatementUploadError] = useState("");
+  const [statementQaError, setStatementQaError] = useState("");
+  const [subscriptionError, setSubscriptionError] = useState("");
+  const [policyError, setPolicyError] = useState("");
 
   const modules = [
     {
@@ -51,12 +56,13 @@ function App() {
 
   async function analyzeStatement() {
     if (!statementFile) {
-      setError("Please select a CSV statement first.");
+      setStatementUploadError("Please select a CSV statement first.");
       return;
     }
 
     setLoading(true);
-    setError("");
+    setStatementUploadError("");
+    setStatementQaError("");
     setStatementResult(null);
     setStatementAnswer("");
 
@@ -77,7 +83,7 @@ function App() {
 
       setStatementResult(data);
     } catch (err) {
-      setError(err.message);
+      setStatementUploadError(err.message);
     } finally {
       setLoading(false);
     }
@@ -89,17 +95,17 @@ function App() {
 
   async function askStatementQuestion() {
     if (!statementResult) {
-      setError("Analyze a statement before asking questions.");
+      setStatementQaError("Analyze a statement before asking questions.");
       return;
     }
 
     if (!statementQuestion.trim()) {
-      setError("Please enter a statement question.");
+      setStatementQaError("Please enter a statement question.");
       return;
     }
 
     setLoading(true);
-    setError("");
+    setStatementQaError("");
     setStatementAnswer("");
 
     try {
@@ -117,6 +123,12 @@ function App() {
       const data = await response.json();
 
       if (!response.ok) {
+        if (response.status === 502) {
+          throw new Error(
+            "The Statement Agent is temporarily unavailable or rate-limited. Please try again shortly."
+          );
+        }
+
         throw new Error(
           data.detail || "Could not answer statement question."
         );
@@ -124,7 +136,7 @@ function App() {
 
       setStatementAnswer(data.answer);
     } catch (err) {
-      setError(err.message);
+      setStatementQaError(err.message);
     } finally {
       setLoading(false);
     }
@@ -136,12 +148,12 @@ function App() {
 
   async function detectSubscriptions() {
     if (!subscriptionFile) {
-      setError("Please select a CSV statement first.");
+      setSubscriptionError("Please select a CSV statement first.");
       return;
     }
 
     setLoading(true);
-    setError("");
+    setSubscriptionError("");
     setSubscriptionResult(null);
 
     try {
@@ -163,7 +175,7 @@ function App() {
 
       setSubscriptionResult(data);
     } catch (err) {
-      setError(err.message);
+      setSubscriptionError(err.message);
     } finally {
       setLoading(false);
     }
@@ -175,12 +187,12 @@ function App() {
 
   async function askPolicyQuestion() {
     if (!policyQuestion.trim()) {
-      setError("Please enter a policy question.");
+      setPolicyError("Please enter a policy question.");
       return;
     }
 
     setLoading(true);
-    setError("");
+    setPolicyError("");
     setPolicyResult(null);
 
     try {
@@ -202,7 +214,7 @@ function App() {
 
       setPolicyResult(data);
     } catch (err) {
-      setError(err.message);
+      setPolicyError(err.message);
     } finally {
       setLoading(false);
     }
@@ -266,7 +278,6 @@ function App() {
                 key={module.id}
                 onClick={() => {
                   setActiveModule(module.id);
-                  setError("");
                 }}
                 className={`group relative min-w-max px-4 py-4 text-left transition sm:px-5 ${
                   active
@@ -336,15 +347,6 @@ function App() {
           </div>
         </section>
 
-        {/* ERROR MESSAGE */}
-        {error && (
-          <div className="mt-6 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700 shadow-sm">
-            <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-red-100 font-bold">
-              !
-            </span>
-            <span>{error}</span>
-          </div>
-        )}
 
         {/* MAIN WORKSPACE */}
         <section className="mt-7 overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-[0_12px_40px_rgba(15,23,42,0.07)]">
@@ -384,12 +386,17 @@ function App() {
                     setStatementFile(file);
                     setStatementResult(null);
                     setStatementAnswer("");
-                    setError("");
+                    setStatementUploadError("");
+                    setStatementQaError("");
                   }}
                   buttonText={loading ? "Processing..." : "Analyze Statement"}
                   onAction={analyzeStatement}
                   loading={loading}
                 />
+
+                {statementUploadError && (
+                  <ErrorMessage message={statementUploadError} />
+                )}
 
                 {statementResult && (
                   <>
@@ -457,9 +464,10 @@ function App() {
 
                       <textarea
                         value={statementQuestion}
-                        onChange={(e) =>
-                          setStatementQuestion(e.target.value)
-                        }
+                        onChange={(e) => {
+                          setStatementQuestion(e.target.value);
+                          setStatementQaError("");
+                        }}
                         rows="3"
                         placeholder="Example: How much did I spend in total?"
                         className="abl-input mt-5"
@@ -471,6 +479,13 @@ function App() {
                         text="Ask Statement Agent"
                         loadingText="Processing..."
                       />
+
+                      {statementQaError && (
+                        <ErrorMessage
+                          message={statementQaError}
+                          className="mt-4"
+                        />
+                      )}
 
                       {statementAnswer && (
                         <AnswerPanel title="AI Answer">
@@ -500,7 +515,7 @@ function App() {
                   onChange={(file) => {
                     setSubscriptionFile(file);
                     setSubscriptionResult(null);
-                    setError("");
+                    setSubscriptionError("");
                   }}
                   buttonText={
                     loading ? "Processing..." : "Detect Recurring Payments"
@@ -508,6 +523,10 @@ function App() {
                   onAction={detectSubscriptions}
                   loading={loading}
                 />
+
+                {subscriptionError && (
+                  <ErrorMessage message={subscriptionError} />
+                )}
 
                 {subscriptionResult && (
                   <div className="mt-10">
@@ -602,7 +621,7 @@ function App() {
                     value={policyQuestion}
                     onChange={(e) => {
                       setPolicyQuestion(e.target.value);
-                      setError("");
+                      setPolicyError("");
                     }}
                     rows="5"
                     placeholder="Example: What documents are required to claim an unclaimed deposit?"
@@ -615,6 +634,13 @@ function App() {
                     text="Ask Policy Assistant"
                     loadingText="Searching..."
                   />
+
+                  {policyError && (
+                    <ErrorMessage
+                      message={policyError}
+                      className="mt-4"
+                    />
+                  )}
                 </div>
 
                 {policyResult && (
@@ -782,6 +808,21 @@ function ActionButton({
     </button>
   );
 }
+
+function ErrorMessage({ message, className = "mt-5" }) {
+  return (
+    <div
+      className={`${className} flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700 shadow-sm`}
+      role="alert"
+    >
+      <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-red-100 font-bold">
+        !
+      </span>
+      <span>{message}</span>
+    </div>
+  );
+}
+
 
 function AnswerPanel({ title, children, className = "mt-5" }) {
   return (
