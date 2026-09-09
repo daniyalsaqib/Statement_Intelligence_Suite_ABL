@@ -199,6 +199,43 @@ class StatementParserTests(unittest.TestCase):
         rows = _parse(csv_text)
         self.assertEqual(rows[0].debit, -1500.0)
 
+    def test_claude_headers_with_currency_annotations(self):
+        csv_text = (
+            "Date,Description,Debit (Rs),Credit (Rs),Balance (Rs)\n"
+            '2026-07-01,Opening Balance,,,"Rs 180,427.25"\n'
+            '2026-07-02,Utility Bill,"Rs 5,420.00",,"Rs 175,007.25"\n'
+            '2026-07-03,Salary Credit,,"Rs 95,000.00","Rs 270,007.25"\n'
+        )
+        rows = _parse(csv_text)
+        self.assertEqual(len(rows), 3)
+        self.assertIsNone(rows[0].debit)
+        self.assertIsNone(rows[0].credit)
+        self.assertEqual(rows[0].balance, 180427.25)
+        self.assertEqual(rows[1].debit, 5420.0)
+        self.assertIsNone(rows[1].credit)
+        self.assertEqual(rows[2].credit, 95000.0)
+        self.assertIsNone(rows[2].debit)
+
+    def test_header_currency_annotations_pkr_and_aliases(self):
+        csv_text = (
+            "Date,Description,Debit Amount (Rs),Credit Amount (Rs),Running Balance (PKR)\n"
+            '2026-07-02,Utility Bill,"Rs 5,420.00",,"Rs 175,007.25"\n'
+            '2026-07-03,Salary Credit,,"Rs 95,000.00","Rs 270,007.25"\n'
+        )
+        rows = _parse(csv_text)
+        self.assertEqual(rows[0].debit, 5420.0)
+        self.assertEqual(rows[1].credit, 95000.0)
+        self.assertEqual(rows[1].balance, 270007.25)
+
+    def test_amount_with_currency_annotation_still_rejected(self):
+        csv_text = (
+            "Date,Description,Amount (Rs),Balance (Rs)\n"
+            '2026-07-02,Netflix,"Rs 1,500.00","Rs 48,500.00"\n'
+        )
+        with self.assertRaises(StatementParseError) as ctx:
+            _parse(csv_text)
+        self.assertIn("Missing required CSV columns: debit, credit", str(ctx.exception))
+
 
 if __name__ == "__main__":
     unittest.main()

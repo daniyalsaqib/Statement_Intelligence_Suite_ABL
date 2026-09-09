@@ -48,6 +48,11 @@ _CURRENCY_PREFIX_RE = re.compile(
     r"^(?:Rs\.?|PKR|₨|\$)\s*",
     re.IGNORECASE,
 )
+# Strip trailing currency annotations on headers, e.g. "Debit (Rs)" -> "debit".
+_CURRENCY_HEADER_SUFFIX_RE = re.compile(
+    r"\s*\((?:rs\.?|pkr|usd|eur|gbp|\$|₨)\)\s*$",
+    re.IGNORECASE,
+)
 _PLAIN_NUMBER_RE = re.compile(r"^-?\d+(?:\.\d+)?$")
 _ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _NUMERIC_DATE_RE = re.compile(r"^(\d{1,2})([/-])(\d{1,2})\2(\d{4})$")
@@ -66,6 +71,8 @@ class StatementParseError(ValueError):
 
 def _normalize_header(name: str) -> str:
     cleaned = name.replace("\ufeff", "").strip().lower().replace("_", " ")
+    cleaned = " ".join(cleaned.split())
+    cleaned = _CURRENCY_HEADER_SUFFIX_RE.sub("", cleaned).strip()
     return " ".join(cleaned.split())
 
 
