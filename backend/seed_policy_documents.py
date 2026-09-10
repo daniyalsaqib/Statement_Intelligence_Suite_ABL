@@ -1,24 +1,23 @@
-from backend.data.policy_corpus import POLICY_DOCUMENTS
+from backend.data.policy_corpus import (
+    POLICY_DOCUMENTS,
+)
 from backend.app.db.policy_vector_store import (
     create_policy_table,
-    store_policy_document,
+    replace_policy_documents,
 )
 
 
-# Make sure the table exists
 create_policy_table()
 
+print(
+    "Preparing and replacing public ABL policy corpus..."
+)
 
-# Store every public ABL policy chunk
-for document in POLICY_DOCUMENTS:
+replace_policy_documents(
+    POLICY_DOCUMENTS
+)
 
-    print("Storing:", document["title"])
-
-    store_policy_document(
-        title=document["title"],
-        source=document["source"],
-        content=document["text"],
-    )
-
-
-print("Policy corpus stored successfully.")
+print(
+    f"Policy corpus stored successfully: "
+    f"{len(POLICY_DOCUMENTS)} documents."
+)

@@ -21,7 +21,7 @@ class TestStatementQA(unittest.TestCase):
     # MONTH / YEAR FILTERING TESTS
     # ---------------------------------------------------------
 
-    @patch("backend.app.routers.statement_qa.ask_gemini")
+    @patch("backend.app.routers.statement_qa.ask_llm")
     def test_month_year_query_with_matching_rows(self, mock_gemini):
         mock_gemini.return_value = "July 2025 transaction summary."
 
@@ -55,7 +55,7 @@ class TestStatementQA(unittest.TestCase):
 
         mock_gemini.assert_called_once()
 
-    @patch("backend.app.routers.statement_qa.ask_gemini")
+    @patch("backend.app.routers.statement_qa.ask_llm")
     def test_month_year_query_with_no_matching_rows(self, mock_gemini):
         payload = {
             "question": "Tell me about July 2025 transactions",
@@ -80,7 +80,7 @@ class TestStatementQA(unittest.TestCase):
 
         mock_gemini.assert_not_called()
 
-    @patch("backend.app.routers.statement_qa.ask_gemini")
+    @patch("backend.app.routers.statement_qa.ask_llm")
     def test_month_detection_is_case_insensitive(self, mock_gemini):
         mock_gemini.return_value = "July summary."
 
@@ -107,7 +107,7 @@ class TestStatementQA(unittest.TestCase):
 
         mock_gemini.assert_called_once()
 
-    @patch("backend.app.routers.statement_qa.ask_gemini")
+    @patch("backend.app.routers.statement_qa.ask_llm")
     def test_abbreviated_month_is_supported(self, mock_gemini):
         mock_gemini.return_value = "July summary."
 
@@ -134,7 +134,7 @@ class TestStatementQA(unittest.TestCase):
 
         mock_gemini.assert_called_once()
 
-    @patch("backend.app.routers.statement_qa.ask_gemini")
+    @patch("backend.app.routers.statement_qa.ask_llm")
     def test_non_month_question_still_uses_normal_flow(
         self,
         mock_gemini,
@@ -164,7 +164,7 @@ class TestStatementQA(unittest.TestCase):
 
         mock_gemini.assert_called_once()
 
-    @patch("backend.app.routers.statement_qa.ask_gemini")
+    @patch("backend.app.routers.statement_qa.ask_llm")
     def test_only_matching_month_rows_are_sent_to_gemini(
         self,
         mock_gemini,
@@ -202,7 +202,7 @@ class TestStatementQA(unittest.TestCase):
         self.assertIn("August Purchase", prompt)
         self.assertNotIn("July Purchase", prompt)
 
-    @patch("backend.app.routers.statement_qa.ask_gemini")
+    @patch("backend.app.routers.statement_qa.ask_llm")
     def test_gemini_exception_is_handled(self, mock_gemini):
         mock_gemini.side_effect = RuntimeError("Provider failure")
 
@@ -230,7 +230,7 @@ class TestStatementQA(unittest.TestCase):
             ),
         )
 
-    @patch("backend.app.routers.statement_qa.ask_gemini")
+    @patch("backend.app.routers.statement_qa.ask_llm")
     def test_empty_gemini_output_is_handled(self, mock_gemini):
         mock_gemini.return_value = "   "
 
@@ -262,7 +262,7 @@ class TestStatementQA(unittest.TestCase):
     # DETERMINISTIC Q&A TESTS
     # ---------------------------------------------------------
 
-    @patch("backend.app.routers.statement_qa.ask_gemini")
+    @patch("backend.app.routers.statement_qa.ask_llm")
     def test_deterministic_transaction_count(self, mock_gemini):
         payload = {
             "question": "How many transactions are in this statement?",
@@ -294,7 +294,7 @@ class TestStatementQA(unittest.TestCase):
 
         mock_gemini.assert_not_called()
 
-    @patch("backend.app.routers.statement_qa.ask_gemini")
+    @patch("backend.app.routers.statement_qa.ask_llm")
     def test_deterministic_total_spending(self, mock_gemini):
         payload = {
             "question": "How much did I spend?",
@@ -326,7 +326,7 @@ class TestStatementQA(unittest.TestCase):
 
         mock_gemini.assert_not_called()
 
-    @patch("backend.app.routers.statement_qa.ask_gemini")
+    @patch("backend.app.routers.statement_qa.ask_llm")
     def test_deterministic_closing_balance(self, mock_gemini):
         payload = {
             "question": "What is my closing balance?",
@@ -358,7 +358,7 @@ class TestStatementQA(unittest.TestCase):
 
         mock_gemini.assert_not_called()
 
-    @patch("backend.app.routers.statement_qa.ask_gemini")
+    @patch("backend.app.routers.statement_qa.ask_llm")
     def test_deterministic_largest_debit(self, mock_gemini):
         payload = {
             "question": "What is my largest debit transaction?",
@@ -396,7 +396,7 @@ class TestStatementQA(unittest.TestCase):
     # MONTH-SPECIFIC DETERMINISTIC Q&A
     # ---------------------------------------------------------
 
-    @patch("backend.app.routers.statement_qa.ask_gemini")
+    @patch("backend.app.routers.statement_qa.ask_llm")
     def test_month_specific_spending_is_deterministic_and_filtered(
         self,
         mock_gemini,

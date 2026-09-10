@@ -1,8 +1,21 @@
-from fastapi import APIRouter
+import logging
+
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from backend.app.db.policy_vector_store import search_policy_documents
-from backend.app.services.gemini_service import ask_gemini
+from backend.app.db.policy_vector_store import (
+    search_policy_documents,
+)
+from backend.app.services.llm_service import ask_llm
+
+
+logger = logging.getLogger(__name__)
+
+
+LLM_UNAVAILABLE_DETAIL = (
+    "Could not generate an answer from the policy assistant. "
+    "Please try again."
+)
 
 
 router = APIRouter(
@@ -15,16 +28,52 @@ class PolicyQuestion(BaseModel):
     question: str
 
 
-@router.post("/ask")
-def ask_policy_question(request: PolicyQuestion):
+def _call_llm(prompt: str) -> str:
+    try:
+        answer = ask_llm(prompt)
 
-    # Retrieve the most relevant ABL public-policy chunks
+    except Exception as exc:
+        status = (
+            getattr(exc, "status_code", None)
+            or getattr(exc, "code", None)
+        )
+
+        logger.error(
+            "LLM request failed: "
+            "provider=groq exception_type=%s status=%s",
+            type(exc).__name__,
+            status,
+        )
+
+        raise HTTPException(
+            status_code=502,
+            detail=LLM_UNAVAILABLE_DETAIL,
+        )
+
+    if answer is None or not str(answer).strip():
+        logger.error(
+            "LLM provider returned an empty response."
+        )
+
+        raise HTTPException(
+            status_code=502,
+            detail=LLM_UNAVAILABLE_DETAIL,
+        )
+
+    return str(answer).strip()
+
+
+@router.post("/ask")
+def ask_policy_question(
+    request: PolicyQuestion,
+):
+
+    # Retrieve relevant ABL public-policy chunks.
     results = search_policy_documents(
         request.question,
         limit=3,
     )
 
-    # Keep only reasonably relevant results.
     # Smaller cosine distance means a better semantic match.
     relevant_results = [
         result
@@ -32,15 +81,19 @@ def ask_policy_question(request: PolicyQuestion):
         if result["distance"] <= 0.75
     ]
 
-    # Fail closed if the policy database has no relevant information
+    # Fail closed when the available policy corpus does not
+    # contain sufficiently relevant information.
     if not relevant_results:
         return {
             "question": request.question,
-            "answer": "I could not find relevant information in the available Allied Bank public policy documents.",
+            "answer": (
+                "I could not find relevant information in the "
+                "available Allied Bank public policy documents."
+            ),
             "sources": [],
         }
 
-    # Build context ONLY from retrieved ABL public-policy content
+    # Build context only from retrieved public ABL policy data.
     context = "\n\n".join(
         f"""
 Title: {result["title"]}
@@ -70,9 +123,9 @@ User question:
 {request.question}
 """
 
-    answer = ask_gemini(prompt)
+    answer = _call_llm(prompt)
 
-    # Return unique sources used by retrieval
+    # Return unique retrieval sources.
     sources = []
 
     for result in relevant_results:

@@ -1,15 +1,61 @@
-from sentence_transformers import SentenceTransformer
+from functools import lru_cache
 
 
-# Load the free MiniLM embedding model
-# It converts text into a 384-number vector
-model = SentenceTransformer("all-MiniLM-L6-v2")
+MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 
 
-def create_embedding(text: str) -> list[float]:
+@lru_cache(maxsize=1)
+def _get_model():
+    """
+    Load the embedding runtime only when Policy RAG actually needs it.
 
-    # Convert text into an embedding vector
-    embedding = model.encode(text)
+    FastEmbed uses ONNX Runtime, avoiding the much heavier
+    Sentence Transformers + PyTorch runtime.
+    """
+    from fastembed import TextEmbedding
 
-    # Convert NumPy array into normal Python list
-    return embedding.tolist()
+    return TextEmbedding(
+        model_name=MODEL_NAME,
+        threads=1,
+    )
+
+
+def create_document_embedding(
+    text: str,
+) -> list[float]:
+    model = _get_model()
+
+    vector = next(
+        iter(
+            model.passage_embed([text])
+        )
+    )
+
+    return [
+        float(value)
+        for value in vector
+    ]
+
+
+def create_query_embedding(
+    text: str,
+) -> list[float]:
+    model = _get_model()
+
+    vector = next(
+        iter(
+            model.query_embed([text])
+        )
+    )
+
+    return [
+        float(value)
+        for value in vector
+    ]
+
+
+# Backward-compatible helper.
+def create_embedding(
+    text: str,
+) -> list[float]:
+    return create_query_embedding(text)
