@@ -3,8 +3,6 @@ import { useState } from "react";
 const API_BASE =
   import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
 
-const ABL_LOGO_URL =
-  "https://upload.wikimedia.org/wikipedia/commons/f/f8/Allied_Bank_Limited_logo_%282022%29.png";
 
 function App() {
   const [activeModule, setActiveModule] = useState("statement");
@@ -235,19 +233,9 @@ function App() {
         <div className="mx-auto max-w-7xl px-5 sm:px-6">
           <div className="flex min-h-[88px] items-center justify-between gap-5">
             <div className="flex min-w-0 items-center gap-4">
-              <a
-                href="https://www.abl.com/"
-                target="_blank"
-                rel="noreferrer"
-                className="flex h-12 w-[150px] shrink-0 items-center justify-center rounded-xl bg-white px-3 py-2 shadow-sm sm:h-14 sm:w-[190px]"
-                aria-label="Visit Allied Bank official website"
-              >
-                <img
-                  src={ABL_LOGO_URL}
-                  alt="Allied Bank Limited"
-                  className="h-full w-full object-contain"
-                />
-              </a>
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/10 text-sm font-black text-white shadow-sm sm:h-14 sm:w-14">
+                AI
+              </div>
 
               <div className="min-w-0">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-200">
