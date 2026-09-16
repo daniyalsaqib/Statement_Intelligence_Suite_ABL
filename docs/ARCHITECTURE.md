@@ -278,7 +278,6 @@ Main source files currently include:
 
 ```text
 frontend/src/App.jsx
-frontend/src/App.css
 frontend/src/index.css
 frontend/src/main.jsx
 ```

@@ -1,8 +1,10 @@
-from backend.app.models.statement import StatementLine # basically the structure we are importing
+from backend.app.models.statement import StatementLine
 
 
-def analyze_statement(transactions: list[StatementLine]) -> dict: # dict -> dictionary
-    if not transactions: # if transactions == FALSE (MEANING NO TRANSACTIONS)
+def analyze_statement(
+    transactions: list[StatementLine],
+) -> dict:
+    if not transactions:
         return {
             "transaction_count": 0,
             "total_debit": 0,
@@ -11,13 +13,13 @@ def analyze_statement(transactions: list[StatementLine]) -> dict: # dict -> dict
             "closing_balance": None,
         }
 
-    total_debit = sum (
-        transaction.debit or 0 # this is going inside total_debit value
+    total_debit = sum(
+        transaction.debit or 0
         for transaction in transactions
     )
 
-    total_credit = sum (
-        transaction.credit or 0 # this is going inside total_credit value
+    total_credit = sum(
+        transaction.credit or 0
         for transaction in transactions
     )
 

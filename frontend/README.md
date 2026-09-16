@@ -74,7 +74,6 @@ frontend/dist/
 src/main.jsx
 src/App.jsx
 src/index.css
-src/App.css
 ```
 
 `App.jsx` communicates with the backend through `VITE_API_BASE_URL`.
