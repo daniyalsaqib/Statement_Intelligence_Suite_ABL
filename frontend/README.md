@@ -1,16 +1,120 @@
-# React + Vite
+# Customer Statement Intelligence Suite — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React frontend for the **ABL Customer Statement Intelligence Suite — App 1 of 2**.
 
-Currently, two official plugins are available:
+The frontend provides the user interface for:
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Statement Intelligence
+- Statement Q&A
+- Recurring Payment Analysis
+- ABL Policy Assistant
 
-## React Compiler
+## Technology
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- React.js
+- Tailwind CSS
+- Vite
+- Vercel
 
-## Expanding the Oxlint configuration
+## Production
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+https://statement-intelligence-suite-abl.vercel.app
+
+The production frontend communicates with the FastAPI backend hosted on Heroku.
+
+## Environment Variable
+
+The frontend uses:
+
+```env
+VITE_API_BASE_URL=http://127.0.0.1:8000
+```
+
+For production, configure Vercel with:
+
+```env
+VITE_API_BASE_URL=https://pure-temple-45004-09958cbb6652.herokuapp.com
+```
+
+Only public frontend configuration should use the `VITE_` prefix.
+
+Backend secrets such as API keys and database credentials must never be exposed through Vite environment variables.
+
+## Local Development
+
+From the repository root:
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+Default development URL:
+
+```text
+http://localhost:5173
+```
+
+## Production Build
+
+```powershell
+npm run build
+```
+
+The production build is generated in:
+
+```text
+frontend/dist/
+```
+
+## Application Entry Points
+
+```text
+src/main.jsx
+src/App.jsx
+src/index.css
+src/App.css
+```
+
+`App.jsx` communicates with the backend through `VITE_API_BASE_URL`.
+
+## Backend
+
+Production API:
+
+```text
+https://pure-temple-45004-09958cbb6652.herokuapp.com
+```
+
+Health endpoint:
+
+```text
+https://pure-temple-45004-09958cbb6652.herokuapp.com/health
+```
+
+API documentation:
+
+```text
+https://pure-temple-45004-09958cbb6652.herokuapp.com/docs
+```
+
+## Main Backend Endpoints
+
+```text
+POST /statement/upload
+POST /statement/ask
+POST /statement/subscriptions
+POST /policy/ask
+GET  /health
+```
+
+## Architecture
+
+For the complete application architecture, see:
+
+**[Detailed System Architecture](../docs/ARCHITECTURE.md)**
+
+The frontend is the presentation layer of a layered client-server architecture.
+
+Financial calculations, statement processing, RAG retrieval, and LLM integration remain server-side in the FastAPI backend.
