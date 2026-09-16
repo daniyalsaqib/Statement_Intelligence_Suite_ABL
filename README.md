@@ -260,6 +260,10 @@ The application uses a:
 
 It is implemented as a **modular monolith**, not as a microservices architecture.
 
+For the complete architecture, deployment model, request flows, RAG pipeline, data boundaries, and design decisions, see:
+
+**[Detailed System Architecture](docs/ARCHITECTURE.md)**
+
 ```text
                          USER / BROWSER
                               |
