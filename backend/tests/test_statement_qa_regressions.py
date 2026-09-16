@@ -1,0 +1,1361 @@
+import unittest
+from unittest.mock import patch
+
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
+from backend.app.routers.statement_qa import router
+
+
+app = FastAPI()
+app.include_router(router)
+
+client = TestClient(app)
+
+
+def row(
+    date_value,
+    description,
+    debit=None,
+    credit=None,
+    balance=0.0,
+):
+    return {
+        "date": date_value,
+        "description": description,
+        "debit": debit,
+        "credit": credit,
+        "balance": balance,
+    }
+
+
+class TestStatementQARegressions(unittest.TestCase):
+
+    def _post(
+        self,
+        question,
+        statement_data,
+        llm_output="Qualitative summary.",
+    ):
+        patcher = patch(
+            "backend.app.routers.statement_qa.ask_llm"
+        )
+
+        mock_llm = patcher.start()
+        self.addCleanup(patcher.stop)
+
+        mock_llm.return_value = llm_output
+
+        response = client.post(
+            "/statement/ask",
+            json={
+                "question": question,
+                "statement_data": statement_data,
+            },
+        )
+
+        return response, mock_llm
+
+    # =========================================================
+    # VERIFIED COMPOUND FINANCIAL QUESTIONS
+    # =========================================================
+
+    def test_compound_spending_and_closing_balance(self):
+        response, mock_llm = self._post(
+            (
+                "How much did I spend and "
+                "what was my closing balance?"
+            ),
+            [
+                row(
+                    "2026-08-01",
+                    "Purchase A",
+                    debit=100.0,
+                    balance=900.0,
+                ),
+                row(
+                    "2026-08-02",
+                    "Purchase B",
+                    debit=50.0,
+                    balance=850.0,
+                ),
+            ],
+            (
+                "You spent 999.00 and your "
+                "closing balance is 888.00."
+            ),
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        answer = response.json()["answer"]
+
+        self.assertIn(
+            "Total spending: 150.00.",
+            answer,
+        )
+
+        self.assertIn(
+            "Closing balance: 850.00.",
+            answer,
+        )
+
+        self.assertNotIn(
+            "999.00",
+            answer,
+        )
+
+        self.assertNotIn(
+            "888.00",
+            answer,
+        )
+
+        mock_llm.assert_called_once()
+
+    def test_compound_opening_and_closing_balance(self):
+        response, mock_llm = self._post(
+            (
+                "What were my opening balance "
+                "and closing balance?"
+            ),
+            [
+                row(
+                    "2026-08-01",
+                    "Opening",
+                    balance=1000.0,
+                ),
+                row(
+                    "2026-08-02",
+                    "Purchase",
+                    debit=100.0,
+                    balance=900.0,
+                ),
+            ],
+            "Opening was 5 and closing was 6.",
+        )
+
+        answer = response.json()["answer"]
+
+        self.assertIn(
+            "Opening balance: 1,000.00.",
+            answer,
+        )
+
+        self.assertIn(
+            "Closing balance: 900.00.",
+            answer,
+        )
+
+        self.assertNotIn(
+            "Opening was 5",
+            answer,
+        )
+
+        mock_llm.assert_called_once()
+
+    def test_compound_total_credit_and_closing_balance(self):
+        response, mock_llm = self._post(
+            (
+                "How much did I receive and "
+                "what was my closing balance?"
+            ),
+            [
+                row(
+                    "2026-08-01",
+                    "Salary",
+                    credit=800.0,
+                    balance=800.0,
+                ),
+                row(
+                    "2026-08-02",
+                    "Purchase",
+                    debit=100.0,
+                    balance=700.0,
+                ),
+            ],
+            (
+                "You received 999.00 and "
+                "closed at 888.00."
+            ),
+        )
+
+        answer = response.json()["answer"]
+
+        self.assertIn(
+            "Total credits: 800.00.",
+            answer,
+        )
+
+        self.assertIn(
+            "Closing balance: 700.00.",
+            answer,
+        )
+
+        self.assertNotIn(
+            "999.00",
+            answer,
+        )
+
+        self.assertNotIn(
+            "888.00",
+            answer,
+        )
+
+        mock_llm.assert_called_once()
+
+    def test_compound_transaction_count_is_verified(self):
+        response, mock_llm = self._post(
+            (
+                "How many transactions are there "
+                "and what stands out?"
+            ),
+            [
+                row(
+                    "2026-08-01",
+                    "A",
+                    debit=10.0,
+                    balance=990.0,
+                ),
+                row(
+                    "2026-08-02",
+                    "B",
+                    credit=20.0,
+                    balance=1010.0,
+                ),
+            ],
+            "There are 999 transactions.",
+        )
+
+        answer = response.json()["answer"]
+
+        self.assertIn(
+            "Transaction count: 2.",
+            answer,
+        )
+
+        self.assertNotIn(
+            "999",
+            answer,
+        )
+
+        mock_llm.assert_called_once()
+
+    def test_compound_debit_credit_counts_are_verified(self):
+        response, mock_llm = self._post(
+            (
+                "How many debit transactions and "
+                "credit transactions are there?"
+            ),
+            [
+                row(
+                    "2026-08-01",
+                    "Debit A",
+                    debit=10.0,
+                    balance=990.0,
+                ),
+                row(
+                    "2026-08-02",
+                    "Credit",
+                    credit=20.0,
+                    balance=1010.0,
+                ),
+                row(
+                    "2026-08-03",
+                    "Debit B",
+                    debit=30.0,
+                    balance=980.0,
+                ),
+            ],
+            "There are 99 debits and 88 credits.",
+        )
+
+        answer = response.json()["answer"]
+
+        self.assertIn(
+            "Debit transaction count: 2.",
+            answer,
+        )
+
+        self.assertIn(
+            "Credit transaction count: 1.",
+            answer,
+        )
+
+        self.assertNotIn(
+            "99",
+            answer,
+        )
+
+        self.assertNotIn(
+            "88",
+            answer,
+        )
+
+        mock_llm.assert_called_once()
+
+    def test_compound_largest_debit_is_verified(self):
+        response, mock_llm = self._post(
+            (
+                "What was my largest debit "
+                "and what stands out?"
+            ),
+            [
+                row(
+                    "2026-08-01",
+                    "Small Purchase",
+                    debit=100.0,
+                    balance=900.0,
+                ),
+                row(
+                    "2026-08-02",
+                    "Large Purchase",
+                    debit=500.0,
+                    balance=400.0,
+                ),
+            ],
+            "The largest debit was 999.00.",
+        )
+
+        answer = response.json()["answer"]
+
+        self.assertIn(
+            "Largest debit:",
+            answer,
+        )
+
+        self.assertIn(
+            "500.00",
+            answer,
+        )
+
+        self.assertIn(
+            "2026-08-02",
+            answer,
+        )
+
+        self.assertIn(
+            "Large Purchase",
+            answer,
+        )
+
+        self.assertNotIn(
+            "999.00",
+            answer,
+        )
+
+        mock_llm.assert_called_once()
+
+    def test_compound_largest_credit_is_verified(self):
+        response, mock_llm = self._post(
+            (
+                "What was my largest credit "
+                "and explain it?"
+            ),
+            [
+                row(
+                    "2026-08-01",
+                    "Small Credit",
+                    credit=100.0,
+                    balance=100.0,
+                ),
+                row(
+                    "2026-08-03",
+                    "Salary",
+                    credit=800.0,
+                    balance=900.0,
+                ),
+            ],
+            "The largest credit was 999.00.",
+        )
+
+        answer = response.json()["answer"]
+
+        self.assertIn(
+            "Largest credit:",
+            answer,
+        )
+
+        self.assertIn(
+            "800.00",
+            answer,
+        )
+
+        self.assertIn(
+            "2026-08-03",
+            answer,
+        )
+
+        self.assertIn(
+            "Salary",
+            answer,
+        )
+
+        self.assertNotIn(
+            "999.00",
+            answer,
+        )
+
+        mock_llm.assert_called_once()
+
+    def test_compound_credit_then_debit_counts_are_verified(self):
+        response, mock_llm = self._post(
+            (
+                "How many credit transactions and "
+                "debit transactions are there?"
+            ),
+            [
+                row(
+                    "2026-08-01",
+                    "Debit A",
+                    debit=10.0,
+                    balance=990.0,
+                ),
+                row(
+                    "2026-08-02",
+                    "Credit",
+                    credit=20.0,
+                    balance=1010.0,
+                ),
+                row(
+                    "2026-08-03",
+                    "Debit B",
+                    debit=30.0,
+                    balance=980.0,
+                ),
+            ],
+            "There are 99 credits and 88 debits.",
+        )
+
+        answer = response.json()["answer"]
+
+        self.assertIn(
+            "Credit transaction count: 1.",
+            answer,
+        )
+
+        self.assertIn(
+            "Debit transaction count: 2.",
+            answer,
+        )
+
+        self.assertNotIn(
+            "99",
+            answer,
+        )
+
+        self.assertNotIn(
+            "88",
+            answer,
+        )
+
+        mock_llm.assert_called_once()
+
+    def test_compound_shared_noun_debit_credit_counts_are_verified(self):
+        response, mock_llm = self._post(
+            (
+                "How many debit and credit "
+                "transactions are there?"
+            ),
+            [
+                row(
+                    "2026-08-01",
+                    "Debit A",
+                    debit=10.0,
+                    balance=990.0,
+                ),
+                row(
+                    "2026-08-02",
+                    "Credit",
+                    credit=20.0,
+                    balance=1010.0,
+                ),
+                row(
+                    "2026-08-03",
+                    "Debit B",
+                    debit=30.0,
+                    balance=980.0,
+                ),
+            ],
+            "There are 99 transactions.",
+        )
+
+        answer = response.json()["answer"]
+
+        self.assertIn(
+            "Debit transaction count: 2.",
+            answer,
+        )
+
+        self.assertIn(
+            "Credit transaction count: 1.",
+            answer,
+        )
+
+        self.assertNotIn(
+            "99",
+            answer,
+        )
+
+        mock_llm.assert_called_once()
+
+    # =========================================================
+    # NUMERIC GUARD
+    # =========================================================
+
+    def test_safe_qualitative_commentary_is_preserved(self):
+        response, _ = self._post(
+            (
+                "How much did I spend "
+                "and what stands out?"
+            ),
+            [
+                row(
+                    "2026-08-01",
+                    "A",
+                    debit=100.0,
+                    balance=900.0,
+                ),
+                row(
+                    "2026-08-02",
+                    "B",
+                    debit=50.0,
+                    balance=850.0,
+                ),
+            ],
+            (
+                "Spending is concentrated in "
+                "a small set of transactions."
+            ),
+        )
+
+        answer = response.json()["answer"]
+
+        self.assertIn(
+            "Total spending: 150.00.",
+            answer,
+        )
+
+        self.assertIn(
+            (
+                "Spending is concentrated in "
+                "a small set of transactions."
+            ),
+            answer,
+        )
+
+    def test_llm_digits_are_discarded(self):
+        response, _ = self._post(
+            (
+                "How much did I spend "
+                "and what stands out?"
+            ),
+            [
+                row(
+                    "2026-08-01",
+                    "A",
+                    debit=100.0,
+                    balance=900.0,
+                )
+            ],
+            "A suspicious amount is 999.",
+        )
+
+        answer = response.json()["answer"]
+
+        self.assertIn(
+            "Total spending: 100.00.",
+            answer,
+        )
+
+        self.assertNotIn(
+            "999",
+            answer,
+        )
+
+    def test_llm_currency_word_is_discarded(self):
+        response, _ = self._post(
+            (
+                "How much did I spend "
+                "and what stands out?"
+            ),
+            [
+                row(
+                    "2026-08-01",
+                    "A",
+                    debit=100.0,
+                    balance=900.0,
+                )
+            ],
+            "The spending is notable in PKR terms.",
+        )
+
+        self.assertNotIn(
+            "PKR",
+            response.json()["answer"],
+        )
+
+    def test_llm_currency_symbol_is_discarded(self):
+        response, _ = self._post(
+            (
+                "How much did I spend "
+                "and what stands out?"
+            ),
+            [
+                row(
+                    "2026-08-01",
+                    "A",
+                    debit=100.0,
+                    balance=900.0,
+                )
+            ],
+            "The pattern is notable in $ terms.",
+        )
+
+        self.assertNotIn(
+            "$",
+            response.json()["answer"],
+        )
+
+    # =========================================================
+    # COMPOUND QUESTION CLASSIFICATION
+    # =========================================================
+
+    def test_ampersand_compound_question(self):
+        response, mock_llm = self._post(
+            (
+                "How much did I spend & "
+                "what was my closing balance?"
+            ),
+            [
+                row(
+                    "2026-08-01",
+                    "A",
+                    debit=100.0,
+                    balance=900.0,
+                ),
+                row(
+                    "2026-08-02",
+                    "B",
+                    debit=50.0,
+                    balance=850.0,
+                ),
+            ],
+            "Wrong 999.",
+        )
+
+        answer = response.json()["answer"]
+
+        self.assertIn(
+            "Total spending: 150.00.",
+            answer,
+        )
+
+        self.assertIn(
+            "Closing balance: 850.00.",
+            answer,
+        )
+
+        mock_llm.assert_called_once()
+
+    def test_multi_sentence_compound_question(self):
+        response, mock_llm = self._post(
+            (
+                "How much did I spend? "
+                "What was my closing balance?"
+            ),
+            [
+                row(
+                    "2026-08-01",
+                    "A",
+                    debit=100.0,
+                    balance=900.0,
+                ),
+                row(
+                    "2026-08-02",
+                    "B",
+                    debit=50.0,
+                    balance=850.0,
+                ),
+            ],
+            "Wrong 999.",
+        )
+
+        answer = response.json()["answer"]
+
+        self.assertIn(
+            "Total spending: 150.00.",
+            answer,
+        )
+
+        self.assertIn(
+            "Closing balance: 850.00.",
+            answer,
+        )
+
+        mock_llm.assert_called_once()
+
+    def test_comma_compound_question(self):
+        response, mock_llm = self._post(
+            (
+                "How much did I spend, "
+                "what was my closing balance?"
+            ),
+            [
+                row(
+                    "2026-08-01",
+                    "A",
+                    debit=100.0,
+                    balance=900.0,
+                ),
+                row(
+                    "2026-08-02",
+                    "B",
+                    debit=50.0,
+                    balance=850.0,
+                ),
+            ],
+            "Wrong 999.",
+        )
+
+        answer = response.json()["answer"]
+
+        self.assertIn(
+            "Total spending: 150.00.",
+            answer,
+        )
+
+        self.assertIn(
+            "Closing balance: 850.00.",
+            answer,
+        )
+
+        mock_llm.assert_called_once()
+
+    # =========================================================
+    # MONTH RESOLUTION
+    # =========================================================
+
+    def test_unique_month_without_year(self):
+        response, mock_llm = self._post(
+            "How much did I spend in August?",
+            [
+                row(
+                    "2026-07-05",
+                    "July Purchase",
+                    debit=900.0,
+                    balance=1100.0,
+                ),
+                row(
+                    "2026-08-05",
+                    "August Purchase",
+                    debit=100.0,
+                    balance=1000.0,
+                ),
+            ],
+        )
+
+        self.assertEqual(
+            response.json()["answer"],
+            "Your total spending is 100.00.",
+        )
+
+        mock_llm.assert_not_called()
+
+    def test_ambiguous_month_without_year(self):
+        response, mock_llm = self._post(
+            "How much did I spend in August?",
+            [
+                row(
+                    "2025-08-05",
+                    "Old",
+                    debit=200.0,
+                    balance=800.0,
+                ),
+                row(
+                    "2026-08-05",
+                    "New",
+                    debit=100.0,
+                    balance=700.0,
+                ),
+            ],
+        )
+
+        self.assertEqual(
+            response.json()["answer"],
+            (
+                "Multiple August periods were found. "
+                "Please include the year in your question."
+            ),
+        )
+
+        mock_llm.assert_not_called()
+
+    def test_missing_month_without_year(self):
+        response, mock_llm = self._post(
+            "How much did I spend in September?",
+            [
+                row(
+                    "2026-08-01",
+                    "A",
+                    debit=100.0,
+                    balance=900.0,
+                )
+            ],
+        )
+
+        self.assertEqual(
+            response.json()["answer"],
+            "No transactions found for September.",
+        )
+
+        mock_llm.assert_not_called()
+
+    def test_missing_explicit_month_year(self):
+        response, mock_llm = self._post(
+            "How much did I spend in September 2026?",
+            [
+                row(
+                    "2026-08-01",
+                    "A",
+                    debit=100.0,
+                    balance=900.0,
+                )
+            ],
+        )
+
+        self.assertEqual(
+            response.json()["answer"],
+            "No transactions found for September 2026.",
+        )
+
+        mock_llm.assert_not_called()
+
+    def test_aug_abbreviation_without_year(self):
+        response, mock_llm = self._post(
+            "How much did I spend in Aug?",
+            [
+                row(
+                    "2026-07-01",
+                    "July",
+                    debit=900.0,
+                    balance=1100.0,
+                ),
+                row(
+                    "2026-08-01",
+                    "August",
+                    debit=100.0,
+                    balance=1000.0,
+                ),
+            ],
+        )
+
+        self.assertEqual(
+            response.json()["answer"],
+            "Your total spending is 100.00.",
+        )
+
+        mock_llm.assert_not_called()
+
+    def test_month_detection_case_insensitive(self):
+        response, mock_llm = self._post(
+            "HOW MUCH DID I SPEND IN AUGUST?",
+            [
+                row(
+                    "2026-07-01",
+                    "July",
+                    debit=900.0,
+                    balance=1100.0,
+                ),
+                row(
+                    "2026-08-01",
+                    "August",
+                    debit=100.0,
+                    balance=1000.0,
+                ),
+            ],
+        )
+
+        self.assertEqual(
+            response.json()["answer"],
+            "Your total spending is 100.00.",
+        )
+
+        mock_llm.assert_not_called()
+
+    def test_modal_may_is_not_month(self):
+        response, mock_llm = self._post(
+            "May I see my total spending?",
+            [
+                row(
+                    "2026-07-01",
+                    "July",
+                    debit=900.0,
+                    balance=1100.0,
+                ),
+                row(
+                    "2026-08-01",
+                    "August",
+                    debit=100.0,
+                    balance=1000.0,
+                ),
+            ],
+        )
+
+        self.assertEqual(
+            response.json()["answer"],
+            "Your total spending is 1,000.00.",
+        )
+
+        mock_llm.assert_not_called()
+
+    def test_actual_may_reference(self):
+        response, mock_llm = self._post(
+            "How much did I spend in May?",
+            [
+                row(
+                    "2026-05-01",
+                    "May Purchase",
+                    debit=100.0,
+                    balance=900.0,
+                ),
+                row(
+                    "2026-06-01",
+                    "June Purchase",
+                    debit=300.0,
+                    balance=600.0,
+                ),
+            ],
+        )
+
+        self.assertEqual(
+            response.json()["answer"],
+            "Your total spending is 100.00.",
+        )
+
+        mock_llm.assert_not_called()
+
+    # =========================================================
+    # MULTI-MONTH COMPARISONS
+    # =========================================================
+
+    def test_explicit_multi_month_comparison(self):
+        response, mock_llm = self._post(
+            (
+                "Compare July 2026 and "
+                "August 2026 spending."
+            ),
+            [
+                row(
+                    "2026-07-05",
+                    "July Purchase",
+                    debit=900.0,
+                    balance=1100.0,
+                ),
+                row(
+                    "2026-08-05",
+                    "August Purchase",
+                    debit=100.0,
+                    balance=1000.0,
+                ),
+            ],
+            "Spending was higher in July.",
+        )
+
+        answer = response.json()["answer"]
+
+        self.assertIn(
+            "July 2026 spending: 900.00.",
+            answer,
+        )
+
+        self.assertIn(
+            "August 2026 spending: 100.00.",
+            answer,
+        )
+
+        self.assertIn(
+            (
+                "July 2026 spending was higher "
+                "than August 2026 spending."
+            ),
+            answer,
+        )
+
+        mock_llm.assert_called_once()
+
+    def test_shared_year_multi_month_comparison(self):
+        response, _ = self._post(
+            "Compare July and August 2026 spending.",
+            [
+                row(
+                    "2026-07-05",
+                    "July",
+                    debit=900.0,
+                    balance=1100.0,
+                ),
+                row(
+                    "2026-08-05",
+                    "August",
+                    debit=100.0,
+                    balance=1000.0,
+                ),
+            ],
+            "July was higher.",
+        )
+
+        answer = response.json()["answer"]
+
+        self.assertIn(
+            "July 2026 spending: 900.00.",
+            answer,
+        )
+
+        self.assertIn(
+            "August 2026 spending: 100.00.",
+            answer,
+        )
+
+    def test_cross_year_comparison(self):
+        response, _ = self._post(
+            (
+                "Compare July 2025 and "
+                "August 2026 spending."
+            ),
+            [
+                row(
+                    "2025-07-01",
+                    "Old",
+                    debit=900.0,
+                    balance=100.0,
+                ),
+                row(
+                    "2026-08-01",
+                    "New",
+                    debit=100.0,
+                    balance=900.0,
+                ),
+            ],
+            "July was higher.",
+        )
+
+        answer = response.json()["answer"]
+
+        self.assertIn(
+            "July 2025 spending: 900.00.",
+            answer,
+        )
+
+        self.assertIn(
+            "August 2026 spending: 100.00.",
+            answer,
+        )
+
+    def test_same_month_across_two_years(self):
+        response, _ = self._post(
+            (
+                "Compare August 2025 and "
+                "August 2026 spending."
+            ),
+            [
+                row(
+                    "2025-08-01",
+                    "Old",
+                    debit=200.0,
+                    balance=800.0,
+                ),
+                row(
+                    "2026-08-01",
+                    "New",
+                    debit=100.0,
+                    balance=700.0,
+                ),
+            ],
+            "Earlier period was higher.",
+        )
+
+        answer = response.json()["answer"]
+
+        self.assertIn(
+            "August 2025 spending: 200.00.",
+            answer,
+        )
+
+        self.assertIn(
+            "August 2026 spending: 100.00.",
+            answer,
+        )
+
+    def test_equal_month_comparison(self):
+        response, _ = self._post(
+            "Compare July and August 2026 spending.",
+            [
+                row(
+                    "2026-07-01",
+                    "July",
+                    debit=100.0,
+                    balance=900.0,
+                ),
+                row(
+                    "2026-08-01",
+                    "August",
+                    debit=100.0,
+                    balance=800.0,
+                ),
+            ],
+            "They were similar.",
+        )
+
+        self.assertIn(
+            (
+                "July 2026 and August 2026 "
+                "had equal spending."
+            ),
+            response.json()["answer"],
+        )
+
+    def test_second_month_higher(self):
+        response, _ = self._post(
+            "Compare July and August 2026 spending.",
+            [
+                row(
+                    "2026-07-01",
+                    "July",
+                    debit=100.0,
+                    balance=900.0,
+                ),
+                row(
+                    "2026-08-01",
+                    "August",
+                    debit=200.0,
+                    balance=700.0,
+                ),
+            ],
+            "August was higher.",
+        )
+
+        self.assertIn(
+            (
+                "August 2026 spending was higher "
+                "than July 2026 spending."
+            ),
+            response.json()["answer"],
+        )
+
+    def test_multi_month_prompt_excludes_other_months(self):
+        response, mock_llm = self._post(
+            "Compare July and August 2026 spending.",
+            [
+                row(
+                    "2026-07-01",
+                    "July Purchase",
+                    debit=100.0,
+                    balance=900.0,
+                ),
+                row(
+                    "2026-08-01",
+                    "August Purchase",
+                    debit=200.0,
+                    balance=700.0,
+                ),
+                row(
+                    "2026-09-01",
+                    "September Purchase",
+                    debit=300.0,
+                    balance=400.0,
+                ),
+            ],
+            "Comparison complete.",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        prompt = mock_llm.call_args.args[0]
+
+        self.assertIn(
+            "July Purchase",
+            prompt,
+        )
+
+        self.assertIn(
+            "August Purchase",
+            prompt,
+        )
+
+        self.assertNotIn(
+            "September Purchase",
+            prompt,
+        )
+
+    def test_multi_month_numeric_llm_is_discarded(self):
+        response, _ = self._post(
+            "Compare July and August 2026 spending.",
+            [
+                row(
+                    "2026-07-01",
+                    "July",
+                    debit=100.0,
+                    balance=900.0,
+                ),
+                row(
+                    "2026-08-01",
+                    "August",
+                    debit=200.0,
+                    balance=700.0,
+                ),
+            ],
+            "July was 999 and August was 888.",
+        )
+
+        answer = response.json()["answer"]
+
+        self.assertNotIn(
+            "999",
+            answer,
+        )
+
+        self.assertNotIn(
+            "888",
+            answer,
+        )
+
+    # =========================================================
+    # EMPTY STATEMENT
+    # =========================================================
+
+    def test_empty_statement_exact_question(self):
+        response, mock_llm = self._post(
+            "How much did I spend?",
+            [],
+        )
+
+        self.assertEqual(
+            response.json()["answer"],
+            (
+                "No transactions are available "
+                "in the uploaded statement."
+            ),
+        )
+
+        mock_llm.assert_not_called()
+
+    def test_empty_statement_open_ended_question(self):
+        response, mock_llm = self._post(
+            "Summarize my statement.",
+            [],
+        )
+
+        self.assertEqual(
+            response.json()["answer"],
+            (
+                "No transactions are available "
+                "in the uploaded statement."
+            ),
+        )
+
+        mock_llm.assert_not_called()
+
+
+    def test_general_and_debit_transaction_counts_are_both_verified(self):
+        response, mock_llm = self._post(
+            (
+                "How many transactions are there "
+                "and how many debit transactions are there?"
+            ),
+            [
+                row(
+                    "2026-08-01",
+                    "Debit A",
+                    debit=10.0,
+                    balance=990.0,
+                ),
+                row(
+                    "2026-08-02",
+                    "Credit",
+                    credit=20.0,
+                    balance=1010.0,
+                ),
+                row(
+                    "2026-08-03",
+                    "Debit B",
+                    debit=30.0,
+                    balance=980.0,
+                ),
+            ],
+            "There are 999 transactions.",
+        )
+
+        answer = response.json()["answer"]
+
+        self.assertIn(
+            "Transaction count: 3.",
+            answer,
+        )
+
+        self.assertIn(
+            "Debit transaction count: 2.",
+            answer,
+        )
+
+        self.assertNotIn(
+            "999",
+            answer,
+        )
+
+        mock_llm.assert_called_once()
+
+    def test_general_and_credit_transaction_counts_are_both_verified(self):
+        response, mock_llm = self._post(
+            (
+                "What is the transaction count "
+                "and how many credit transactions are there?"
+            ),
+            [
+                row(
+                    "2026-08-01",
+                    "Debit",
+                    debit=10.0,
+                    balance=990.0,
+                ),
+                row(
+                    "2026-08-02",
+                    "Credit A",
+                    credit=20.0,
+                    balance=1010.0,
+                ),
+                row(
+                    "2026-08-03",
+                    "Credit B",
+                    credit=30.0,
+                    balance=1040.0,
+                ),
+            ],
+            "There are 888 transactions.",
+        )
+
+        answer = response.json()["answer"]
+
+        self.assertIn(
+            "Transaction count: 3.",
+            answer,
+        )
+
+        self.assertIn(
+            "Credit transaction count: 2.",
+            answer,
+        )
+
+        self.assertNotIn(
+            "888",
+            answer,
+        )
+
+        mock_llm.assert_called_once()
+
+if __name__ == "__main__":
+    unittest.main()

@@ -14,9 +14,10 @@ from backend.app.services.statement_qa_deterministic import (
     answer_deterministic_question,
 )
 from backend.app.services.statement_qa_filter import (
-    extract_month_year,
     filter_transactions_by_month_year,
+    filter_transactions_by_scopes,
     month_year_label,
+    resolve_month_scopes,
 )
 
 
@@ -101,31 +102,55 @@ def _requires_open_ended_analysis(
     question: str,
 ) -> bool:
     """
-    Determine whether the question asks for interpretation,
-    summarization, comparison, or multiple pieces of information.
+    Determine whether a question requires the verified-facts
+    plus LLM path instead of a single deterministic answer.
 
-    Such questions must not be short-circuited by the deterministic
-    helper merely because they also contain phrases such as
-    "total spending".
+    This includes interpretive questions and questions that ask
+    for more than one financial result.
     """
-
-    question_lower = question.lower()
+    normalized = " ".join(
+        question.lower().strip().split()
+    )
 
     if any(
-        term in question_lower
+        term in normalized
         for term in OPEN_ENDED_TERMS
     ):
         return True
 
-    # Compound questions commonly request more than one result.
-    # Examples:
-    # "How much did I spend and what was my closing balance?"
-    # "Give me the total and tell me what stands out."
-    if " and " in question_lower:
+    # Multiple requested financial facts must not be answered
+    # by the first deterministic rule that happens to match.
+    if (
+        _requested_financial_intent_count(
+            question
+        )
+        > 1
+    ):
+        return True
+
+    # Natural compound-question separators.
+    if " and " in normalized:
+        return True
+
+    if "&" in question:
+        return True
+
+    if ";" in question:
+        return True
+
+    if question.count("?") > 1:
+        return True
+
+    if re.search(
+        (
+            r",\s*"
+            r"(?:what|how|which|when|where|who)\b"
+        ),
+        normalized,
+    ):
         return True
 
     return False
-
 
 def _mentioned_month_numbers(
     question: str,
@@ -134,43 +159,273 @@ def _mentioned_month_numbers(
 
     found_months = []
 
-    for month_number, aliases in MONTH_ALIASES.items():
+    for month_number, aliases in (
+        MONTH_ALIASES.items()
+    ):
         for alias in aliases:
-            pattern = rf"\b{re.escape(alias)}\b"
+            pattern = (
+                rf"\b{re.escape(alias)}\b"
+            )
 
-            if re.search(
+            for match in re.finditer(
                 pattern,
                 question_lower,
             ):
-                found_months.append(
+                if (
+                    alias == "may"
+                    and not question_lower[
+                        :match.start()
+                    ].strip()
+                ):
+                    remainder = (
+                        question_lower[
+                            match.end():
+                        ]
+                    )
+
+                    if re.match(
+                        (
+                            r"\s+(?:"
+                            r"i|we|you|he|she|they|it|be"
+                            r")\b"
+                        ),
+                        remainder,
+                    ):
+                        continue
+
+                if (
                     month_number
-                )
+                    not in found_months
+                ):
+                    found_months.append(
+                        month_number
+                    )
+
                 break
 
     return found_months
+
+def _normalized_question(
+    question: str,
+) -> str:
+    return " ".join(
+        question.lower().strip().split()
+    )
+
+
+def _contains_any_phrase(
+    question: str,
+    phrases: tuple[str, ...],
+) -> bool:
+    normalized = _normalized_question(
+        question
+    )
+
+    return any(
+        phrase in normalized
+        for phrase in phrases
+    )
 
 
 def _wants_total_spending(
     question: str,
 ) -> bool:
-    question_lower = question.lower()
-
-    phrases = (
-        "total spending",
-        "total spend",
-        "overall spending",
-        "overall spend",
-        "spent in total",
-        "include the total",
-        "mention the total",
-        "mention my total",
+    return _contains_any_phrase(
+        question,
+        (
+            "total spending",
+            "total spend",
+            "overall spending",
+            "overall spend",
+            "spent in total",
+            "include the total",
+            "mention the total",
+            "mention my total",
+            "how much did i spend",
+            "how much have i spent",
+            "total debit",
+            "total debits",
+        ),
     )
 
-    return any(
-        phrase in question_lower
-        for phrase in phrases
+
+def _wants_total_credits(
+    question: str,
+) -> bool:
+    return _contains_any_phrase(
+        question,
+        (
+            "how much money did i receive",
+            "how much did i receive",
+            "how much have i received",
+            "total received",
+            "total credit",
+            "total credits",
+            "total income",
+        ),
     )
 
+
+def _wants_debit_count(
+    question: str,
+) -> bool:
+    if _contains_any_phrase(
+        question,
+        (
+            "how many debit transactions",
+            "number of debit transactions",
+            "debit transaction count",
+            "debit transactions are there",
+        ),
+    ):
+        return True
+
+    # Coordinated forms:
+    #
+    # "How many debit and credit transactions are there?"
+    # "How many credit and debit transactions are there?"
+    return _contains_any_phrase(
+        question,
+        (
+            "how many debit and credit transactions",
+            "how many credit and debit transactions",
+            "number of debit and credit transactions",
+            "number of credit and debit transactions",
+        ),
+    )
+
+
+def _wants_credit_count(
+    question: str,
+) -> bool:
+    if _contains_any_phrase(
+        question,
+        (
+            "how many credit transactions",
+            "number of credit transactions",
+            "credit transaction count",
+            "credit transactions are there",
+        ),
+    ):
+        return True
+
+    # Coordinated forms where debit and credit share
+    # the final "transactions" noun.
+    return _contains_any_phrase(
+        question,
+        (
+            "how many debit and credit transactions",
+            "how many credit and debit transactions",
+            "number of debit and credit transactions",
+            "number of credit and debit transactions",
+        ),
+    )
+
+
+def _wants_transaction_count(
+    question: str,
+) -> bool:
+    normalized = _normalized_question(
+        question
+    )
+
+    # These phrases explicitly request the overall number
+    # of statement transactions, even if the same question
+    # also asks for debit- or credit-specific counts.
+    if _contains_any_phrase(
+        question,
+        (
+            "how many transactions",
+            "number of transactions",
+        ),
+    ):
+        return True
+
+    # Match a standalone general "transaction count" while
+    # avoiding the directional phrases:
+    #
+    # debit transaction count
+    # credit transaction count
+    return bool(
+        re.search(
+            (
+                r"(?<!debit )"
+                r"(?<!credit )"
+                r"\btransaction count\b"
+            ),
+            normalized,
+        )
+    )
+
+
+def _wants_opening_balance(
+    question: str,
+) -> bool:
+    return (
+        "opening balance"
+        in _normalized_question(
+            question
+        )
+    )
+
+
+def _wants_closing_balance(
+    question: str,
+) -> bool:
+    return (
+        "closing balance"
+        in _normalized_question(
+            question
+        )
+    )
+
+
+def _wants_largest_debit(
+    question: str,
+) -> bool:
+    return _contains_any_phrase(
+        question,
+        (
+            "largest debit",
+            "biggest debit",
+            "highest debit",
+        ),
+    )
+
+
+def _wants_largest_credit(
+    question: str,
+) -> bool:
+    return _contains_any_phrase(
+        question,
+        (
+            "largest credit",
+            "biggest credit",
+            "highest credit",
+        ),
+    )
+
+
+def _requested_financial_intent_count(
+    question: str,
+) -> int:
+    checks = (
+        _wants_total_spending,
+        _wants_total_credits,
+        _wants_transaction_count,
+        _wants_debit_count,
+        _wants_credit_count,
+        _wants_opening_balance,
+        _wants_closing_balance,
+        _wants_largest_debit,
+        _wants_largest_credit,
+    )
+
+    return sum(
+        1
+        for check in checks
+        if check(question)
+    )
 
 def _wants_comparison(
     question: str,
@@ -252,27 +507,177 @@ def _build_verified_figure_block(
 
     lines = []
 
+    def append_amount(
+        label: str,
+        value,
+    ):
+        if value is None:
+            return
+
+        scoped_label = (
+            f"{label} for {scope_label}"
+            if scope_label
+            else label
+        )
+
+        lines.append(
+            f"{scoped_label}: "
+            f"{_format_amount(value)}."
+        )
+
+    def append_count(
+        label: str,
+        value,
+    ):
+        if value is None:
+            return
+
+        scoped_label = (
+            f"{label} for {scope_label}"
+            if scope_label
+            else label
+        )
+
+        lines.append(
+            f"{scoped_label}: {int(value)}."
+        )
+
+    def append_largest(
+        label: str,
+        item,
+    ):
+        if not item:
+            return
+
+        amount = item.get(
+            "amount"
+        )
+
+        if amount is None:
+            return
+
+        scoped_label = (
+            f"{label} for {scope_label}"
+            if scope_label
+            else label
+        )
+
+        line = (
+            f"{scoped_label}: "
+            f"{_format_amount(amount)}"
+        )
+
+        date_value = item.get(
+            "date"
+        )
+
+        description = item.get(
+            "description"
+        )
+
+        if date_value:
+            line += (
+                f" on {date_value}"
+            )
+
+        if description:
+            line += (
+                f" for {description}"
+            )
+
+        lines.append(
+            line + "."
+        )
+
     if _wants_total_spending(
         question
     ):
-        total_debit = verified_facts.get(
-            "total_debit"
+        append_amount(
+            "Total spending",
+            verified_facts.get(
+                "total_debit"
+            ),
         )
 
-        if total_debit is not None:
+    if _wants_total_credits(
+        question
+    ):
+        append_amount(
+            "Total credits",
+            verified_facts.get(
+                "total_credit"
+            ),
+        )
 
-            if scope_label:
-                lines.append(
-                    f"Total spending for "
-                    f"{scope_label}: "
-                    f"{_format_amount(total_debit)}."
-                )
+    if _wants_transaction_count(
+        question
+    ):
+        append_count(
+            "Transaction count",
+            verified_facts.get(
+                "transaction_count"
+            ),
+        )
 
-            else:
-                lines.append(
-                    f"Total spending: "
-                    f"{_format_amount(total_debit)}."
-                )
+    if _wants_debit_count(
+        question
+    ):
+        append_count(
+            "Debit transaction count",
+            verified_facts.get(
+                "debit_transaction_count"
+            ),
+        )
+
+    if _wants_credit_count(
+        question
+    ):
+        append_count(
+            "Credit transaction count",
+            verified_facts.get(
+                "credit_transaction_count"
+            ),
+        )
+
+    if _wants_opening_balance(
+        question
+    ):
+        append_amount(
+            "Opening balance",
+            verified_facts.get(
+                "opening_balance"
+            ),
+        )
+
+    if _wants_closing_balance(
+        question
+    ):
+        append_amount(
+            "Closing balance",
+            verified_facts.get(
+                "closing_balance"
+            ),
+        )
+
+    if _wants_largest_debit(
+        question
+    ):
+        append_largest(
+            "Largest debit",
+            verified_facts.get(
+                "largest_debit"
+            ),
+        )
+
+    if _wants_largest_credit(
+        question
+    ):
+        append_largest(
+            "Largest credit",
+            verified_facts.get(
+                "largest_credit"
+            ),
+        )
 
     requested_months = (
         _mentioned_month_numbers(
@@ -301,14 +706,20 @@ def _build_verified_figure_block(
             first = month_entries[0]
             second = month_entries[1]
 
-            if first["amount"] > second["amount"]:
+            if (
+                first["amount"]
+                > second["amount"]
+            ):
                 lines.append(
                     f"{first['label']} spending was "
                     f"higher than "
                     f"{second['label']} spending."
                 )
 
-            elif first["amount"] < second["amount"]:
+            elif (
+                first["amount"]
+                < second["amount"]
+            ):
                 lines.append(
                     f"{second['label']} spending was "
                     f"higher than "
@@ -318,7 +729,8 @@ def _build_verified_figure_block(
             else:
                 lines.append(
                     f"{first['label']} and "
-                    f"{second['label']} had equal spending."
+                    f"{second['label']} "
+                    f"had equal spending."
                 )
 
     if not lines:
@@ -331,7 +743,6 @@ def _build_verified_figure_block(
             for line in lines
         )
     )
-
 
 def _numeric_guard_instruction(
     verified_figure_block: str,
@@ -474,51 +885,95 @@ def ask_statement_question(
     request: StatementQuestion,
 ):
 
-    parsed = extract_month_year(
-        request.question
+    if not request.statement_data:
+        return {
+            "question": request.question,
+            "answer": (
+                "No transactions are available "
+                "in the uploaded statement."
+            ),
+        }
+
+    resolution = resolve_month_scopes(
+        request.question,
+        request.statement_data,
+    )
+
+    if resolution.error:
+        return {
+            "question": request.question,
+            "answer": resolution.error,
+        }
+
+    scopes = list(
+        resolution.scopes
     )
 
     requires_open_ended = (
         _requires_open_ended_analysis(
             request.question
         )
+        or len(scopes) > 1
     )
 
     # ---------------------------------------------------------
-    # MONTH / YEAR QUERY
+    # MONTH-SCOPED QUERY
     # ---------------------------------------------------------
 
-    if parsed is not None:
-        year, month = parsed
+    if resolution.has_month_reference:
 
-        label = month_year_label(
-            year,
-            month,
-        )
-
-        matching_rows = (
-            filter_transactions_by_month_year(
-                request.statement_data,
-                year,
-                month,
-            )
-        )
-
-        if not matching_rows:
+        if not scopes:
             return {
                 "question": request.question,
                 "answer": (
-                    f"No transactions found for "
-                    f"{label}."
+                    "Could not resolve the requested "
+                    "statement period."
                 ),
             }
 
-        # Only simple exact questions are allowed to exit through
-        # the deterministic helper.
-        #
-        # Open-ended or compound questions continue into the
-        # verified-facts + LLM pipeline.
-        if not requires_open_ended:
+        scope_labels = []
+
+        for year, month in scopes:
+
+            label = month_year_label(
+                year,
+                month,
+            )
+
+            scope_labels.append(
+                label
+            )
+
+            rows_for_scope = (
+                filter_transactions_by_month_year(
+                    request.statement_data,
+                    year,
+                    month,
+                )
+            )
+
+            if not rows_for_scope:
+                return {
+                    "question": request.question,
+                    "answer": (
+                        f"No transactions found for "
+                        f"{label}."
+                    ),
+                }
+
+        matching_rows = (
+            filter_transactions_by_scopes(
+                request.statement_data,
+                scopes,
+            )
+        )
+
+        # A single exact month scope can still use the
+        # deterministic short path.
+        if (
+            len(scopes) == 1
+            and not requires_open_ended
+        ):
             deterministic_answer = (
                 answer_deterministic_question(
                     request.question,
@@ -538,11 +993,17 @@ def ask_statement_question(
             )
         )
 
+        single_scope_label = (
+            scope_labels[0]
+            if len(scope_labels) == 1
+            else None
+        )
+
         verified_figure_block = (
             _build_verified_figure_block(
                 request.question,
                 verified_facts,
-                scope_label=label,
+                scope_label=single_scope_label,
             )
         )
 
@@ -552,18 +1013,25 @@ def ask_statement_question(
             )
         )
 
+        scope_description = (
+            " and ".join(
+                scope_labels
+            )
+        )
+
         prompt = f"""
 You are analyzing a synthetic bank statement.
 
-The user asked specifically about {label}.
+The user asked specifically about:
+{scope_description}.
 
-Use ONLY the verified backend facts and the {label}
-transactions supplied below.
+Use ONLY the verified backend facts and the transactions
+from the requested statement periods supplied below.
 
 VERIFIED BACKEND FACTS:
 {_dump_json(verified_facts)}
 
-{label} TRANSACTIONS:
+FILTERED STATEMENT TRANSACTIONS:
 {_dump_json(matching_rows)}
 
 IMPORTANT RULES:
@@ -582,7 +1050,7 @@ IMPORTANT RULES:
 5. Do not invent transactions, dates, merchants, balances,
    debits, credits, categories, subscriptions, or financial facts.
 
-6. Do not use transactions from another month or year.
+6. Do not use transactions outside the requested statement periods.
 
 7. Claims such as largest, highest, lowest, majority, most,
    main, or similar comparative claims must be supported by
@@ -610,8 +1078,6 @@ Answer only from the information supplied above.
 
     else:
 
-        # Only simple exact questions should short-circuit through
-        # the deterministic helper.
         if not requires_open_ended:
             deterministic_answer = (
                 answer_deterministic_question(
