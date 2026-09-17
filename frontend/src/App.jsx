@@ -43,7 +43,7 @@ function App() {
     },
     {
       id: "policy",
-      title: "ABL Policy Assistant",
+      title: "Public Policy Assistant",
       description: "Ask questions about public ABL policies",
     },
   ];
@@ -223,7 +223,7 @@ function App() {
       {/* ABL-STYLE UTILITY BAR */}
       <div className="bg-[#f58220] text-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-2 text-[11px] font-semibold tracking-[0.16em] sm:px-6">
-          <span>ALLIED BANK LIMITED</span>
+          <span>INTERNSHIP PROTOTYPE • SYNTHETIC DATA DEMO</span>
           <span className="hidden sm:inline">INTERNSHIP PROGRAM • AGENTIC AI</span>
         </div>
       </div>
@@ -239,7 +239,7 @@ function App() {
 
               <div className="min-w-0">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-200">
-                  Allied Bank • AI Banking
+                  Student Internship Project • Banking AI Demo
                 </p>
                 <h1 className="mt-1 truncate text-xl font-bold sm:text-2xl">
                   Customer Statement Intelligence Suite
@@ -304,6 +304,17 @@ function App() {
       </nav>
 
       <main className="mx-auto max-w-7xl px-5 py-8 sm:px-6 sm:py-10">
+        {/* PUBLIC PROTOTYPE DISCLOSURE */}
+        <section className="mb-6 rounded-2xl border border-amber-300 bg-amber-50 px-5 py-4 text-sm leading-6 text-amber-950 shadow-sm">
+          <p className="font-extrabold">
+            Internship prototype — not an official Allied Bank customer website.
+          </p>
+          <p className="mt-1">
+            This independent student project is a synthetic-data demonstration
+            created for educational and internship purposes. Do not upload real
+            customer statements, credentials, or confidential information.
+          </p>
+        </section>
         {/* HERO */}
         <section className="relative overflow-hidden rounded-[28px] bg-[#063b6f] px-6 py-8 text-white shadow-[0_18px_55px_rgba(4,48,89,0.18)] sm:px-10 sm:py-10">
           <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full border-[44px] border-white/5" />
@@ -350,7 +361,7 @@ function App() {
               </div>
 
               <div className="rounded-full bg-blue-50 px-4 py-2 text-xs font-semibold text-[#063b6f]">
-                ABL Intelligence Workspace
+                Synthetic Demo Workspace
               </div>
             </div>
           </div>
