@@ -1,5 +1,7 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 
 from backend.app.routers.statements import router as statement_router
 from backend.app.routers.statement_qa import router as statement_qa_router
@@ -22,6 +24,54 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.exception_handler(
+    RequestValidationError
+)
+async def safe_request_validation_error(
+    request: Request,
+    exc: RequestValidationError,
+):
+    """
+    Return validation details without reflecting raw invalid
+    request values back to the client.
+
+    This also prevents non-finite numeric inputs such as
+    Infinity from causing JSON serialization failures.
+    """
+    safe_errors = []
+
+    for error in exc.errors():
+        safe_errors.append(
+            {
+                "loc": list(
+                    error.get(
+                        "loc",
+                        (),
+                    )
+                ),
+                "msg": str(
+                    error.get(
+                        "msg",
+                        "Invalid request value.",
+                    )
+                ),
+                "type": str(
+                    error.get(
+                        "type",
+                        "value_error",
+                    )
+                ),
+            }
+        )
+
+    return JSONResponse(
+        status_code=422,
+        content={
+            "detail": safe_errors,
+        },
+    )
+
 
 # Register application API routers.
 app.include_router(statement_router)
