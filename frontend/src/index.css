@@ -69,68 +69,84 @@ button {
   box-shadow: 0 0 0 4px rgba(10, 95, 168, 0.1);
 }
 
-.developer-signature {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 22px;
-  min-width: 360px;
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.05);
-  padding: 12px 18px;
+.screen-enter {
+  animation: screen-enter 260ms ease-out both;
 }
 
-.developer-info {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  flex-shrink: 0;
+.processing-orbit {
+  position: relative;
+  display: grid;
+  width: 88px;
+  height: 88px;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(6, 59, 111, 0.07);
 }
 
-.developer-info span {
-  color: #ff9a3c;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+.processing-orbit::before {
+  position: absolute;
+  inset: 0;
+  content: "";
+  border: 3px solid rgba(6, 59, 111, 0.10);
+  border-top-color: var(--abl-orange);
+  border-radius: 999px;
+  animation: spin 900ms linear infinite;
 }
 
-.developer-info strong {
-  color: #ffffff;
-  margin-top: 5px;
-  font-size: 15px;
-  font-weight: 700;
+.processing-core {
+  display: grid;
+  width: 58px;
+  height: 58px;
+  place-items: center;
+  border-radius: 18px;
+  background: var(--abl-blue);
+  color: white;
+  font-size: 14px;
+  font-weight: 900;
+  box-shadow: 0 12px 28px rgba(6, 59, 111, 0.18);
 }
 
-.developer-info small {
-  color: #bfdbfe;
-  margin-top: 3px;
-  font-size: 11px;
+.processing-bar {
+  width: 42%;
+  animation: processing-bar 1.1s ease-in-out infinite;
 }
 
-.signature-image {
-  display: block;
-  width: 175px;
-  height: 82px;
-  object-fit: contain;
-  object-position: center;
-  filter: invert(1);
-}
-
-@media (max-width: 768px) {
-  .developer-signature {
-    min-width: 0;
-    width: 100%;
-    justify-content: flex-start;
+@keyframes screen-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
   }
 
-  .developer-info {
-    align-items: flex-start;
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes processing-bar {
+  0% {
+    transform: translateX(-110%);
   }
 
-  .signature-image {
-    width: 145px;
-    height: 68px;
+  50% {
+    transform: translateX(75%);
+  }
+
+  100% {
+    transform: translateX(260%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screen-enter,
+  .processing-orbit::before,
+  .processing-bar {
+    animation: none;
   }
 }
