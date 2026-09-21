@@ -1,0 +1,5 @@
+date,description,debit,credit,balance
+2026-06-01,Opening Balance,,,1000
+2026-06-05,June Purchase,25,,975
+2026-07-05,July Purchase,50,,925
+2026-08-05,August Purchase,100,,825
