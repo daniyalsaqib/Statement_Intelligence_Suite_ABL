@@ -1,10 +1,15 @@
 import { useState } from "react";
 
-const API_BASE =
-  import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
-
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
 
 function App() {
+  // Controls which main screen is currently visible.
+  //
+  // upload      -> User has not analyzed a statement yet.
+  // processing  -> Statement request is currently being processed.
+  // workspace   -> Statement was analyzed successfully.
+  const [screen, setScreen] = useState("upload");
+
   const [activeModule, setActiveModule] = useState("statement");
 
   // Statement Intelligence
@@ -64,9 +69,18 @@ function App() {
     setStatementResult(null);
     setStatementAnswer("");
 
+    // NEW:
+    // User ne Analyze click kar diya.
+    // Ab upload page hata kar processing screen show karni hai.
+    setScreen("processing");
+
     try {
       const formData = new FormData();
       formData.append("file", statementFile);
+
+      // TIMER START:
+      // Backend request bhejne se just pehle current time save kar rahe hain.
+      const startedAt = performance.now();
 
       const response = await fetch(`${API_BASE}/statement/upload`, {
         method: "POST",
@@ -79,9 +93,44 @@ function App() {
         throw new Error(data.detail || "Could not analyze statement.");
       }
 
+      // PERFORMANCE TIMER END:
+      // This is the frontend-observed request duration:
+      // request -> backend -> response -> JSON parsing.
+      const elapsed = performance.now() - startedAt;
+
+      console.log(`Statement processing: ${Math.round(elapsed)} ms`);
+
+      // NEW LOGIC:
+      // Keep the processing screen visible for a short minimum duration
+      // so the transition feels deliberate instead of flashing.
+      //
+      // This does NOT always add 600 ms.
+      // We only wait for whatever time is still missing.
+      const minimumProcessingDuration = 600;
+
+      const remainingProcessingTime = Math.max(
+        0,
+        minimumProcessingDuration - elapsed,
+      );
+
+      if (remainingProcessingTime > 0) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, remainingProcessingTime),
+        );
+      }
+
+      // Save the verified backend result only after the transition is ready.
       setStatementResult(data);
+
+      // Move from the processing experience into the workspace.
+      setScreen("workspace");
     } catch (err) {
       setStatementUploadError(err.message);
+
+      // NEW:
+      // Agar upload/analysis fail ho jaye,
+      // user ko wapas upload screen par bhejo.
+      setScreen("upload");
     } finally {
       setLoading(false);
     }
@@ -123,13 +172,11 @@ function App() {
       if (!response.ok) {
         if (response.status === 502) {
           throw new Error(
-            "The Statement Agent is temporarily unavailable or rate-limited. Please try again shortly."
+            "The Statement Agent is temporarily unavailable or rate-limited. Please try again shortly.",
           );
         }
 
-        throw new Error(
-          data.detail || "Could not answer statement question."
-        );
+        throw new Error(data.detail || "Could not answer statement question.");
       }
 
       setStatementAnswer(data.answer);
@@ -166,9 +213,7 @@ function App() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(
-          data.detail || "Could not detect recurring payments."
-        );
+        throw new Error(data.detail || "Could not detect recurring payments.");
       }
 
       setSubscriptionResult(data);
@@ -218,13 +263,78 @@ function App() {
     }
   }
 
+  // -------------------------------------------------------
+  // PROCESSING SCREEN
+  // -------------------------------------------------------
+  //
+  // While screen === "processing", React returns this page early.
+  // Therefore the normal landing/workspace interface disappears
+  // completely until statement processing finishes.
+
+  if (screen === "processing") {
+    return (
+      <div className="min-h-screen bg-[#f4f7fb] text-slate-900">
+        {/* Prototype disclosure remains visible during processing. */}
+        <div className="bg-[#f58220] text-white">
+          <div className="mx-auto max-w-7xl px-5 py-2 text-center text-[11px] font-semibold tracking-[0.16em] sm:px-6">
+            INTERNSHIP PROTOTYPE • SYNTHETIC DATA DEMO
+          </div>
+        </div>
+
+        <main className="flex min-h-[calc(100vh-32px)] items-center justify-center px-5 py-12 sm:px-6">
+          <section
+            className="w-full max-w-xl rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-[0_20px_60px_rgba(15,23,42,0.10)] sm:p-10"
+            aria-live="polite"
+            aria-busy="true"
+          >
+            {/* Simple visual activity indicator. No fake percentage is shown. */}
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-100 border-t-[#063b6f]" />
+            </div>
+
+            <p className="mt-7 text-xs font-bold uppercase tracking-[0.16em] text-[#f58220]">
+              Statement Intelligence
+            </p>
+
+            <h1 className="mt-3 text-2xl font-black tracking-tight text-[#063b6f] sm:text-3xl">
+              Processing your statement
+            </h1>
+
+            <p className="mx-auto mt-4 max-w-md text-sm leading-7 text-slate-600 sm:text-base">
+              Your synthetic CSV is being validated and analyzed to calculate
+              verified financial metrics.
+            </p>
+
+            <div className="mt-7 rounded-2xl border border-blue-100 bg-[#f8fbff] px-5 py-4">
+              <p className="text-sm font-semibold text-[#063b6f]">
+                Preparing your intelligence workspace...
+              </p>
+
+              <p className="mt-1 text-xs leading-5 text-slate-500">
+                Financial calculations remain deterministic and
+                backend-verified.
+              </p>
+            </div>
+
+            <p className="mt-6 text-xs text-slate-400">
+              Do not close or refresh this page while processing.
+            </p>
+          </section>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#f4f7fb] text-slate-900">
       {/* ABL-STYLE UTILITY BAR */}
       <div className="bg-[#f58220] text-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-2 text-[11px] font-semibold tracking-[0.16em] sm:px-6">
           <span>INTERNSHIP PROTOTYPE • SYNTHETIC DATA DEMO</span>
-          <span className="hidden sm:inline">INTERNSHIP PROGRAM • AGENTIC AI</span>
+
+          <span className="hidden sm:inline">
+            INTERNSHIP PROGRAM • AGENTIC AI
+          </span>
         </div>
       </div>
 
@@ -241,6 +351,7 @@ function App() {
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-200">
                   Student Internship Project • Banking AI Demo
                 </p>
+
                 <h1 className="mt-1 truncate text-xl font-bold sm:text-2xl">
                   Customer Statement Intelligence Suite
                 </h1>
@@ -286,6 +397,7 @@ function App() {
 
                   <div>
                     <p className="text-sm font-bold">{module.title}</p>
+
                     <p className="hidden text-[11px] font-medium text-slate-400 md:block">
                       {module.description}
                     </p>
@@ -309,12 +421,14 @@ function App() {
           <p className="font-extrabold">
             Internship prototype — not an official Allied Bank customer website.
           </p>
+
           <p className="mt-1">
             This independent student project is a synthetic-data demonstration
             created for educational and internship purposes. Do not upload real
             customer statements, credentials, or confidential information.
           </p>
         </section>
+
         {/* HERO */}
         <section className="relative overflow-hidden rounded-[28px] bg-[#063b6f] px-6 py-8 text-white shadow-[0_18px_55px_rgba(4,48,89,0.18)] sm:px-10 sm:py-10">
           <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full border-[44px] border-white/5" />
@@ -333,8 +447,8 @@ function App() {
               </h2>
 
               <p className="mt-4 max-w-3xl text-sm leading-7 text-blue-100 sm:text-base">
-                Analyze synthetic account statements, identify recurring
-                payment patterns and retrieve grounded information from Allied
+                Analyze synthetic account statements, identify recurring payment
+                patterns and retrieve grounded information from Allied
                 Bank&apos;s public policy material — from one focused workspace.
               </p>
             </div>
@@ -346,7 +460,6 @@ function App() {
           </div>
         </section>
 
-
         {/* MAIN WORKSPACE */}
         <section className="mt-7 overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-[0_12px_40px_rgba(15,23,42,0.07)]">
           <div className="border-b border-slate-100 bg-gradient-to-r from-[#f8fbff] to-white px-6 py-5 sm:px-8">
@@ -355,6 +468,7 @@ function App() {
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f58220]">
                   Active Workspace
                 </p>
+
                 <h2 className="mt-1 text-xl font-extrabold text-[#063b6f] sm:text-2xl">
                   {modules.find((module) => module.id === activeModule)?.title}
                 </h2>
@@ -373,38 +487,110 @@ function App() {
 
             {activeModule === "statement" && (
               <div>
-                <SectionIntro
-                  eyebrow="Statement Intelligence"
-                  title="Understand account activity at a glance"
-                  description="Upload a synthetic CSV account statement to generate a structured summary and ask the statement agent questions grounded in the uploaded transactions."
-                />
+                {/* -----------------------------------------------------
+                    UPLOAD / LANDING STATE
 
-                <UploadPanel
-                  file={statementFile}
-                  onChange={(file) => {
-                    setStatementFile(file);
-                    setStatementResult(null);
-                    setStatementAnswer("");
-                    setStatementUploadError("");
-                    setStatementQaError("");
-                  }}
-                  buttonText={loading ? "Processing..." : "Analyze Statement"}
-                  onAction={analyzeStatement}
-                  loading={loading}
-                />
+                    screen === "upload" means the user has not entered
+                    the analyzed-statement workspace yet.
 
-                {statementUploadError && (
-                  <ErrorMessage message={statementUploadError} />
+                    Once processing succeeds, this entire block disappears.
+                ----------------------------------------------------- */}
+                {screen === "upload" && (
+                  <>
+                    <SectionIntro
+                      eyebrow="Statement Intelligence"
+                      title="Understand account activity at a glance"
+                      description="Upload a synthetic CSV account statement to generate a structured summary and ask the statement agent questions grounded in the uploaded transactions."
+                    />
+
+                    <UploadPanel
+                      file={statementFile}
+                      onChange={(file) => {
+                        setStatementFile(file);
+                        setStatementResult(null);
+                        setStatementAnswer("");
+                        setStatementUploadError("");
+                        setStatementQaError("");
+                      }}
+                      buttonText={
+                        loading ? "Processing..." : "Analyze Statement"
+                      }
+                      onAction={analyzeStatement}
+                      loading={loading}
+                    />
+
+                    {statementUploadError && (
+                      <ErrorMessage message={statementUploadError} />
+                    )}
+                  </>
                 )}
 
-                {statementResult && (
+                {/* -----------------------------------------------------
+                    ANALYZED STATEMENT WORKSPACE
+
+                    This section is intentionally separate from the upload
+                    experience.
+
+                    User ne CSV analyze kar li hai.
+                    Ab purana upload component hata diya gaya hai
+                    aur user actual intelligence workspace mein aa gaya hai.
+                ----------------------------------------------------- */}
+                {screen === "workspace" && statementResult && (
                   <>
+                    {/* Workspace status/header */}
+                    <div className="flex flex-wrap items-start justify-between gap-5 rounded-2xl border border-blue-100 bg-[#f8fbff] p-5 sm:p-6">
+                      <div className="flex items-start gap-4">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#063b6f] text-sm font-black text-white">
+                          ✓
+                        </div>
+
+                        <div>
+                          <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#f58220]">
+                            Statement Ready
+                          </p>
+
+                          <h3 className="mt-1 text-xl font-extrabold text-[#063b6f]">
+                            Statement analyzed successfully
+                          </h3>
+
+                          <p className="mt-2 text-sm leading-6 text-slate-500">
+                            <span className="font-semibold text-slate-700">
+                              {statementResult.filename}
+                            </span>{" "}
+                            is loaded and ready for banking intelligence.
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          // WORKSPACE RESET:
+                          // User agar doosri statement analyze karna chahe
+                          // tou current statement state clear karke
+                          // usko wapas upload screen par bhejte hain.
+                          setStatementFile(null);
+                          setStatementResult(null);
+                          setStatementQuestion("");
+                          setStatementAnswer("");
+                          setStatementUploadError("");
+                          setStatementQaError("");
+                          setScreen("upload");
+                        }}
+                        className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-[#063b6f] shadow-sm transition hover:border-blue-200 hover:bg-blue-50"
+                      >
+                        Analyze another statement
+                      </button>
+                    </div>
+
+                    {/* Statement summary */}
                     <div className="mt-10">
                       <div className="flex flex-wrap items-end justify-between gap-3">
                         <div>
                           <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#f58220]">
                             Analysis Result
                           </p>
+
                           <h3 className="mt-1 text-xl font-extrabold text-[#063b6f]">
                             Statement Summary
                           </h3>
@@ -422,21 +608,25 @@ function App() {
                         value={statementResult.analysis.transaction_count}
                         accent="01"
                       />
+
                       <SummaryCard
                         label="Total Debit"
                         value={statementResult.analysis.total_debit}
                         accent="02"
                       />
+
                       <SummaryCard
                         label="Total Credit"
                         value={statementResult.analysis.total_credit}
                         accent="03"
                       />
+
                       <SummaryCard
                         label="Opening Balance"
                         value={statementResult.analysis.opening_balance}
                         accent="04"
                       />
+
                       <SummaryCard
                         label="Closing Balance"
                         value={statementResult.analysis.closing_balance}
@@ -444,6 +634,105 @@ function App() {
                       />
                     </div>
 
+                    {/* -----------------------------------------------------
+    TRANSACTION TABLE
+
+    Backend se jo parsed transactions already aa rahi hain,
+    unko yahan user ko directly show kar rahe hain.
+
+    Iska purpose transparency hai:
+    user summary numbers ke peeche actual statement rows
+    bhi inspect kar sakta hai.
+----------------------------------------------------- */}
+                    <div className="mt-9 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 bg-[#f8fafc] px-5 py-4 sm:px-6">
+                        <div>
+                          <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#f58220]">
+                            Statement Data
+                          </p>
+
+                          <h3 className="mt-1 text-lg font-extrabold text-[#063b6f]">
+                            Transactions
+                          </h3>
+
+                          <p className="mt-1 text-sm text-slate-500">
+                            Parsed rows from the uploaded synthetic statement.
+                          </p>
+                        </div>
+
+                        <span className="rounded-full bg-blue-50 px-3 py-1.5 text-xs font-bold text-[#063b6f]">
+                          {statementResult.transactions.length} rows
+                        </span>
+                      </div>
+
+                      {/* Horizontal scrolling keeps all banking columns usable on smaller screens. */}
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full text-left text-sm">
+                          <thead className="bg-[#063b6f] text-white">
+                            <tr>
+                              <th className="whitespace-nowrap px-5 py-3.5 text-xs font-bold uppercase tracking-[0.08em]">
+                                Date
+                              </th>
+
+                              <th className="min-w-[220px] px-5 py-3.5 text-xs font-bold uppercase tracking-[0.08em]">
+                                Description
+                              </th>
+
+                              <th className="whitespace-nowrap px-5 py-3.5 text-right text-xs font-bold uppercase tracking-[0.08em]">
+                                Debit
+                              </th>
+
+                              <th className="whitespace-nowrap px-5 py-3.5 text-right text-xs font-bold uppercase tracking-[0.08em]">
+                                Credit
+                              </th>
+
+                              <th className="whitespace-nowrap px-5 py-3.5 text-right text-xs font-bold uppercase tracking-[0.08em]">
+                                Balance
+                              </th>
+                            </tr>
+                          </thead>
+
+                          <tbody className="divide-y divide-slate-100">
+                            {statementResult.transactions.map(
+                              (transaction, index) => (
+                                <tr
+                                  key={`${transaction.date}-${transaction.description}-${index}`}
+                                  className="transition hover:bg-blue-50/50"
+                                >
+                                  <td className="whitespace-nowrap px-5 py-4 font-medium text-slate-600">
+                                    {transaction.date}
+                                  </td>
+
+                                  <td className="px-5 py-4 font-semibold text-slate-800">
+                                    {transaction.description || "—"}
+                                  </td>
+
+                                  <td className="whitespace-nowrap px-5 py-4 text-right font-semibold text-slate-700">
+                                    {transaction.debit ?? "—"}
+                                  </td>
+
+                                  <td className="whitespace-nowrap px-5 py-4 text-right font-semibold text-slate-700">
+                                    {transaction.credit ?? "—"}
+                                  </td>
+
+                                  <td className="whitespace-nowrap px-5 py-4 text-right font-extrabold text-[#063b6f]">
+                                    {transaction.balance}
+                                  </td>
+                                </tr>
+                              ),
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <div className="border-t border-slate-100 bg-slate-50 px-5 py-3 text-xs leading-5 text-slate-500 sm:px-6">
+                        Values are displayed exactly from the parsed synthetic
+                        statement. Financial totals shown above remain
+                        backend-calculated.
+                      </div>
+                    </div>
+
+                    {/* Statement Q&A */}
                     <div className="mt-9 rounded-2xl border border-slate-200 bg-[#f8fafc] p-5 sm:p-6">
                       <div className="flex items-start gap-3">
                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#063b6f] text-sm font-black text-white">
@@ -454,6 +743,7 @@ function App() {
                           <h3 className="font-extrabold text-[#063b6f]">
                             Ask about this statement
                           </h3>
+
                           <p className="mt-1 text-sm leading-6 text-slate-500">
                             Ask the agent a question using only the uploaded
                             statement data.
@@ -534,13 +824,17 @@ function App() {
                         <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#f58220]">
                           Pattern Detection
                         </p>
+
                         <h3 className="mt-1 text-xl font-extrabold text-[#063b6f]">
                           Recurring Payment Candidates
                         </h3>
                       </div>
 
                       <div className="rounded-xl bg-[#063b6f] px-4 py-3 text-white shadow-sm">
-                        <span className="text-xs text-blue-200">Candidates</span>
+                        <span className="text-xs text-blue-200">
+                          Candidates
+                        </span>
+
                         <span className="ml-3 text-xl font-black">
                           {subscriptionResult.recurring_payment_count}
                         </span>
@@ -564,6 +858,7 @@ function App() {
                                   <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-sm font-black text-[#063b6f]">
                                     {String(index + 1).padStart(2, "0")}
                                   </span>
+
                                   <h4 className="font-extrabold text-slate-900">
                                     {payment.description}
                                   </h4>
@@ -590,7 +885,7 @@ function App() {
                                 </p>
                               </div>
                             </div>
-                          )
+                          ),
                         )}
                       </div>
                     )}
@@ -635,10 +930,7 @@ function App() {
                   />
 
                   {policyError && (
-                    <ErrorMessage
-                      message={policyError}
-                      className="mt-4"
-                    />
+                    <ErrorMessage message={policyError} className="mt-4" />
                   )}
                 </div>
 
@@ -683,11 +975,13 @@ function App() {
             title="Synthetic Data"
             text="Statement analysis is designed for synthetic/local demonstration data."
           />
+
           <InfoCard
             number="02"
             title="Grounded Policy Q&A"
             text="Policy answers are based on retrieved public Allied Bank material."
           />
+
           <InfoCard
             number="03"
             title="AI-Assisted"
@@ -703,13 +997,15 @@ function App() {
             <p className="text-sm font-bold uppercase tracking-[0.14em] text-blue-200">
               Allied Bank Internship Program
             </p>
+
             <p className="mt-2 max-w-2xl text-sm leading-6 text-blue-100/80">
               Customer Statement Intelligence Suite • Synthetic statement data
               and public policy information only.
             </p>
+
             <p className="mt-3 text-xs text-blue-200/70">
-              Demonstration application — not connected to live customer
-              banking systems.
+              Demonstration application — not connected to live customer banking
+              systems.
             </p>
           </div>
 
@@ -738,9 +1034,11 @@ function SectionIntro({ eyebrow, title, description }) {
       <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f58220]">
         {eyebrow}
       </p>
+
       <h3 className="mt-2 text-2xl font-black tracking-tight text-[#063b6f] sm:text-3xl">
         {title}
       </h3>
+
       <p className="mt-3 text-sm leading-7 text-slate-600 sm:text-base">
         {description}
       </p>
@@ -817,11 +1115,11 @@ function ErrorMessage({ message, className = "mt-5" }) {
       <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-red-100 font-bold">
         !
       </span>
+
       <span>{message}</span>
     </div>
   );
 }
-
 
 function AnswerPanel({ title, children, className = "mt-5" }) {
   return (
@@ -832,6 +1130,7 @@ function AnswerPanel({ title, children, className = "mt-5" }) {
         <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#063b6f] text-xs font-black text-white">
           AI
         </span>
+
         <p className="font-extrabold text-[#063b6f]">{title}</p>
       </div>
 
@@ -848,6 +1147,7 @@ function HeroStat({ label, value }) {
       <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-blue-200">
         {label}
       </p>
+
       <p className="mt-1 text-xl font-black text-white">{value}</p>
     </div>
   );
@@ -860,8 +1160,10 @@ function InfoCard({ number, title, text }) {
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-xs font-black text-[#f58220]">
           {number}
         </span>
+
         <div>
           <h4 className="font-extrabold text-[#063b6f]">{title}</h4>
+
           <p className="mt-1 text-sm leading-6 text-slate-500">{text}</p>
         </div>
       </div>
@@ -875,6 +1177,7 @@ function SummaryCard({ label, value, accent }) {
       <span className="absolute right-4 top-4 text-[10px] font-black tracking-[0.12em] text-[#f58220]">
         {accent}
       </span>
+
       <p className="pr-8 text-xs font-bold uppercase tracking-[0.08em] text-slate-400">
         {label}
       </p>
@@ -909,6 +1212,7 @@ function RichText({ text }) {
           return (
             <div key={index} className="flex gap-3">
               <span className="mt-[2px] font-black text-[#f58220]">•</span>
+
               <p>{renderInline(trimmed.slice(2))}</p>
             </div>
           );
