@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 from backend.app.routers.statements import router as statement_router
 from backend.app.routers.statement_qa import router as statement_qa_router
 from backend.app.routers.policy_qa import router as policy_qa_router
+from backend.app.routers.assistant import router as assistant_router
 
 
 app = FastAPI(
@@ -24,6 +25,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 @app.exception_handler(
     RequestValidationError
@@ -74,9 +76,13 @@ async def safe_request_validation_error(
 
 
 # Register application API routers.
+#
+# Existing routes remain available for backward compatibility.
+# assistant_router adds the new unified orchestration endpoint.
 app.include_router(statement_router)
 app.include_router(statement_qa_router)
 app.include_router(policy_qa_router)
+app.include_router(assistant_router)
 
 
 @app.get("/health")
