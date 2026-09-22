@@ -73,7 +73,61 @@ class TestStatementQARegressions(unittest.TestCase):
 
         return response, mock_llm
 
-        # =========================================================
+    # =========================================================
+    # MERCHANT-SPECIFIC SPENDING
+    # =========================================================
+    #
+    # PURPOSE:
+    # "How much did I spend on Netflix?" contains the generic
+    # phrase "how much did I spend", but it is NOT asking for
+    # total statement spending.
+    #
+    # The backend must calculate only the explicitly matched
+    # merchant description and must not call Groq.
+
+    def test_merchant_specific_spending_does_not_return_total_spending(
+        self,
+    ):
+        response, mock_llm = self._post(
+            "How much did I spend on Netflix?",
+            [
+                row(
+                    "2026-08-01",
+                    "Netflix",
+                    debit=1500.0,
+                    balance=8500.0,
+                ),
+                row(
+                    "2026-08-02",
+                    "Groceries",
+                    debit=5000.0,
+                    balance=3500.0,
+                ),
+            ],
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        answer = response.json()["answer"]
+
+        # Netflix-specific verified spending is 1,500.
+        self.assertIn(
+            "1,500.00",
+            answer,
+        )
+
+        # Whole-statement debit 6,500 must never be returned
+        # for a merchant-specific question.
+        self.assertNotIn(
+            "6,500.00",
+            answer,
+        )
+
+        # Exact merchant spending is deterministic Python work.
+        mock_llm.assert_not_called()
 
     # NATURAL FINANCIAL LANGUAGE TRUST BOUNDARY
     # =========================================================
@@ -299,6 +353,81 @@ class TestStatementQARegressions(unittest.TestCase):
     # =========================================================
     # MULTI-TURN STATEMENT FOLLOW-UPS
     # =========================================================
+
+    def test_short_and_month_follow_up_reuses_previous_user_intent(
+        self,
+    ):
+        # PURPOSE:
+        # Real users may shorten:
+        #
+        # "What about July?"
+        #
+        # to:
+        #
+        # "And July?"
+        #
+        # The backend should still recover the previous
+        # deterministic USER financial intent and recalculate
+        # it against July only.
+
+        statement_data = [
+            row(
+                "2026-07-01",
+                "July Purchase A",
+                debit=40.0,
+                balance=960.0,
+            ),
+            row(
+                "2026-07-02",
+                "July Purchase B",
+                debit=30.0,
+                balance=930.0,
+            ),
+            row(
+                "2026-08-01",
+                "August Purchase",
+                debit=200.0,
+                balance=730.0,
+            ),
+        ]
+
+        response, mock_llm = self._post(
+            "And July?",
+            statement_data,
+            conversation_history=[
+                {
+                    "role": "user",
+                    "content": "How much did I spend in August?",
+                },
+                {
+                    "role": "assistant",
+                    "content": "Previous verified August answer.",
+                },
+            ],
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        answer = response.json()["answer"]
+
+        # July verified spending:
+        # 40 + 30 = 70.
+        self.assertIn(
+            "70.00",
+            answer,
+        )
+
+        # August value must not leak into the July answer.
+        self.assertNotIn(
+            "200.00",
+            answer,
+        )
+
+        # Follow-up stays fully deterministic.
+        mock_llm.assert_not_called()
 
     def test_follow_up_reuses_previous_user_intent_for_new_month(
         self,

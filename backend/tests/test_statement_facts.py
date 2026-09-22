@@ -45,6 +45,48 @@ class TestVerifiedStatementFactsRegressions(unittest.TestCase):
 
         self.assertIsNone(facts["closing_balance"])
 
+    def test_reverse_chronological_rows_use_date_order_for_balances(
+        self,
+    ):
+        # PURPOSE:
+        # Some banking CSV exports are newest-first.
+        #
+        # Opening and closing balances must follow chronological
+        # transaction dates instead of raw CSV/list position.
+        facts = build_verified_statement_facts(
+            [
+                row(
+                    "2026-08-31",
+                    "Newest Transaction",
+                    debit=100.0,
+                    balance=1400.0,
+                ),
+                row(
+                    "2026-08-15",
+                    "Middle Transaction",
+                    credit=500.0,
+                    balance=1500.0,
+                ),
+                row(
+                    "2026-08-01",
+                    "Opening Balance",
+                    balance=1000.0,
+                ),
+            ]
+        )
+
+        # Earliest dated row defines the opening boundary.
+        self.assertEqual(
+            facts["opening_balance"],
+            1000.0,
+        )
+
+        # Latest dated row defines the closing boundary.
+        self.assertEqual(
+            facts["closing_balance"],
+            1400.0,
+        )
+
     def test_direction_counts(self):
         facts = build_verified_statement_facts(
             [

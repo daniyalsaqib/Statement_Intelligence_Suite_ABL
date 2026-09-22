@@ -39,6 +39,7 @@ from backend.app.services.statement_qa_deterministic import (
     TOTAL_CREDIT_PHRASES,
     TOTAL_SPENDING_PHRASES,
     answer_deterministic_question,
+    is_specific_spending_question,
 )
 
 from backend.app.services.statement_qa_filter import (
@@ -441,9 +442,17 @@ def _wants_total_spending(
     # Statement router aur deterministic calculator dono
     # exactly same spending vocabulary use karte hain.
     #
-    # Isse aisi situation avoid hoti hai jahan deterministic
-    # layer kisi phrase ko samjhe lekin verified numeric guard
-    # usi phrase ko miss kar de.
+    # Merchant-specific wording ko whole-statement total
+    # spending intent nahi samajhna chahiye.
+    #
+    # Example:
+    # "How much did I spend on Netflix?"
+    #
+    # is NOT the same as:
+    # "How much did I spend?"
+
+    if is_specific_spending_question(question):
+        return False
 
     return _contains_any_phrase(
         question,
@@ -1047,30 +1056,69 @@ def _is_scope_follow_up(
     question: str,
 ) -> bool:
     """
-
     Identify short follow-up questions that mainly change
+    the requested statement period.
 
-    the requested scope, for example:
+    Supported examples:
+    - What about July?
+    - How about August?
+    - And July?
+    - In July?
+    - How much in July?
 
+    IMPORTANT:
+    This helper does not calculate any financial answer.
 
-
-    "What about July?"
-
-    "How about August?"
-
-
-
-    Ye helper financial answer calculate nahi karta.
-
-    Sirf ye identify karta hai ke current question
-
-    previous user intent ka follow-up lag raha hai.
-
+    It only identifies a narrow scope-only follow-up so the
+    previous reusable USER financial intent can be applied
+    safely to the newly selected statement period.
     """
 
-    normalized = " ".join(question.lower().split())
+    normalized = " ".join(question.lower().strip().split())
 
-    return normalized.startswith(FOLLOW_UP_STARTERS)
+    # Existing explicit conversational forms remain supported.
+    if normalized.startswith(FOLLOW_UP_STARTERS):
+        return True
+
+    # Remove only trailing conversational punctuation before
+    # evaluating short month-only follow-up forms.
+    scope_text = normalized.rstrip(" ?!.,;:")
+
+    month_aliases = sorted(
+        {alias for aliases in MONTH_ALIASES.values() for alias in aliases},
+        key=len,
+        reverse=True,
+    )
+
+    month_pattern = "|".join(re.escape(alias) for alias in month_aliases)
+
+    # Narrow scope-only forms:
+    #
+    # "July"
+    # "July 2026"
+    # "And July?"
+    # "In July?"
+    # "For July?"
+    if re.fullmatch(
+        rf"(?:(?:and|in|for)\s+)?" rf"(?:{month_pattern})" rf"(?:\s+\d{{4}})?",
+        scope_text,
+    ):
+        return True
+
+    # Natural shortened continuation:
+    #
+    # "How much in July?"
+    #
+    # This intentionally still requires a month scope and
+    # does not treat arbitrary "how much" questions as
+    # conversational follow-ups.
+    if re.fullmatch(
+        rf"how much\s+in\s+" rf"(?:{month_pattern})" rf"(?:\s+\d{{4}})?",
+        scope_text,
+    ):
+        return True
+
+    return False
 
 
 def _answer_from_latest_reusable_user_intent(

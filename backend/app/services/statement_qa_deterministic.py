@@ -50,6 +50,95 @@ def _to_statement_lines(
     return [StatementLine(**row) for row in statement_data]
 
 
+def is_specific_spending_question(
+    question: str,
+) -> bool:
+    """
+    Detect spending questions that target a specific merchant
+    or description instead of the whole statement.
+
+    Examples:
+    - How much did I spend on Netflix?
+    - How much did I spend at Grocery Store?
+
+    IMPORTANT:
+    A targeted spending question must never be interpreted as
+    "total statement spending" only because it contains the
+    phrase "how much did I spend".
+    """
+
+    normalized = f" {' '.join(question.lower().strip().split())} "
+
+    has_spending_intent = any(phrase in normalized for phrase in TOTAL_SPENDING_PHRASES)
+
+    if not has_spending_intent:
+        return False
+
+    return any(
+        marker in normalized
+        for marker in (
+            " on ",
+            " at ",
+            " to ",
+        )
+    )
+
+
+def _answer_specific_spending_question(
+    question: str,
+    transactions: list[StatementLine],
+) -> str | None:
+    """
+    Deterministically answer merchant-specific spending when
+    exactly one transaction description from the current
+    statement scope is explicitly mentioned in the question.
+
+    If no safe unique description match exists, return None
+    instead of incorrectly returning total statement spending.
+    """
+
+    if not is_specific_spending_question(question):
+        return None
+
+    normalized_question = " ".join(question.lower().strip().split())
+
+    matched_descriptions: dict[str, str] = {}
+
+    for transaction in transactions:
+        normalized_description = " ".join(
+            transaction.description.lower().strip().split()
+        )
+
+        if not normalized_description:
+            continue
+
+        if normalized_description not in normalized_question:
+            continue
+
+        matched_descriptions.setdefault(
+            normalized_description,
+            transaction.description,
+        )
+
+    # Safe deterministic answer sirf tab dena hai jab exactly
+    # one statement description question mein clearly match ho.
+    if len(matched_descriptions) != 1:
+        return None
+
+    normalized_description, display_description = next(
+        iter(matched_descriptions.items())
+    )
+
+    total = sum(
+        transaction.debit or 0
+        for transaction in transactions
+        if " ".join(transaction.description.lower().strip().split())
+        == normalized_description
+    )
+
+    return f"Your spending on {display_description} is " f"{total:,.2f}."
+
+
 def answer_deterministic_question(
     question: str,
     statement_data: list[dict],
@@ -116,6 +205,27 @@ def answer_deterministic_question(
     #
     # Financial amount hamesha Python analysis se aata hai,
     # LLM se calculate nahi hota.
+
+    # Merchant-specific spending must be resolved before the
+    # generic total-spending rule.
+    #
+    # Example:
+    # "How much did I spend on Netflix?"
+    #
+    # must not return the total debit for the whole statement.
+    specific_spending_answer = _answer_specific_spending_question(
+        question,
+        transactions,
+    )
+
+    if specific_spending_answer is not None:
+        return specific_spending_answer
+
+    # If the question targets a merchant but we could not
+    # safely identify exactly one description, do NOT fall
+    # through to the whole-statement spending total.
+    if is_specific_spending_question(question):
+        return None
 
     if any(phrase in normalized for phrase in TOTAL_SPENDING_PHRASES):
         return f"Your total spending is " f"{analysis['total_debit']:,.2f}."
