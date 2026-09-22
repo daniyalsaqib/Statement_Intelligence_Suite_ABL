@@ -1,14 +1,53 @@
 from backend.app.models.statement import StatementLine
 from backend.app.services.statement_analysis import analyze_statement
 
+TOTAL_SPENDING_PHRASES = (
+    "total spending",
+    "total spend",
+    "overall spending",
+    "overall spend",
+    "spent in total",
+    "total amount spent",
+    "how much did i spend",
+    "how much have i spent",
+    "total debit",
+    "total debits",
+    # Natural financial-language alternatives.
+    "total expenditure",
+    "overall expenditure",
+    "what was my expenditure",
+    "how much was my expenditure",
+    "total outflow",
+    "total outflows",
+    "how much money went out",
+    "how much went out",
+    "how much did i pay out",
+    "how much have i paid out",
+    "what were my outflows",
+)
+
+
+TOTAL_CREDIT_PHRASES = (
+    "how much money did i receive",
+    "how much did i receive",
+    "how much have i received",
+    "total received",
+    "total credit",
+    "total credits",
+    "total income",
+    # Natural inflow alternatives.
+    "total inflow",
+    "total inflows",
+    "how much money came in",
+    "how much came in",
+    "what were my inflows",
+)
+
 
 def _to_statement_lines(
     statement_data: list[dict],
 ) -> list[StatementLine]:
-    return [
-        StatementLine(**row)
-        for row in statement_data
-    ]
+    return [StatementLine(**row) for row in statement_data]
 
 
 def answer_deterministic_question(
@@ -16,9 +55,7 @@ def answer_deterministic_question(
     statement_data: list[dict],
 ) -> str | None:
 
-    normalized = " ".join(
-        question.lower().strip().split()
-    )
+    normalized = " ".join(question.lower().strip().split())
 
     transactions = _to_statement_lines(statement_data)
 
@@ -39,8 +76,7 @@ def answer_deterministic_question(
         count = sum(
             1
             for transaction in transactions
-            if transaction.debit is not None
-            and transaction.debit != 0
+            if transaction.debit is not None and transaction.debit != 0
         )
 
         return f"There are {count} debit transactions."
@@ -53,8 +89,7 @@ def answer_deterministic_question(
         count = sum(
             1
             for transaction in transactions
-            if transaction.credit is not None
-            and transaction.credit != 0
+            if transaction.credit is not None and transaction.credit != 0
         )
 
         return f"There are {count} credit transactions."
@@ -65,44 +100,38 @@ def answer_deterministic_question(
         or "transaction count" in normalized
     ):
         return (
-            f"This statement contains "
-            f"{analysis['transaction_count']} transactions."
+            f"This statement contains " f"{analysis['transaction_count']} transactions."
         )
 
-    # ---------------------------------------------------------
+        # ---------------------------------------------------------
     # TOTAL SPENDING / DEBITS
     # ---------------------------------------------------------
+    #
+    # IMPORTANT:
+    # Spending intent ki saari natural-language phrases
+    # upar TOTAL_SPENDING_PHRASES mein centralized hain.
+    #
+    # Isse deterministic calculation aur verified-figure
+    # guard future mein same vocabulary use kar sakte hain.
+    #
+    # Financial amount hamesha Python analysis se aata hai,
+    # LLM se calculate nahi hota.
 
-    if (
-        "total spending" in normalized
-        or "total spend" in normalized
-        or "how much did i spend" in normalized
-        or "how much have i spent" in normalized
-        or "total debit" in normalized
-        or "total debits" in normalized
-    ):
-        return (
-            f"Your total spending is "
-            f"{analysis['total_debit']:,.2f}."
-        )
+    if any(phrase in normalized for phrase in TOTAL_SPENDING_PHRASES):
+        return f"Your total spending is " f"{analysis['total_debit']:,.2f}."
 
     # ---------------------------------------------------------
     # TOTAL RECEIVED / CREDITS
     # ---------------------------------------------------------
+    #
+    # Incoming-money intent ki natural-language phrases
+    # TOTAL_CREDIT_PHRASES mein centralized hain.
+    #
+    # Same rule:
+    # verified credit total Python se calculate hota hai.
 
-    if (
-        "how much money did i receive" in normalized
-        or "how much did i receive" in normalized
-        or "how much have i received" in normalized
-        or "total received" in normalized
-        or "total credit" in normalized
-        or "total credits" in normalized
-        or "total income" in normalized
-    ):
-        return (
-            f"Your total credits are "
-            f"{analysis['total_credit']:,.2f}."
-        )
+    if any(phrase in normalized for phrase in TOTAL_CREDIT_PHRASES):
+        return f"Your total credits are " f"{analysis['total_credit']:,.2f}."
 
     # ---------------------------------------------------------
     # BALANCES
@@ -114,10 +143,7 @@ def answer_deterministic_question(
         if value is None:
             return "The opening balance is not available."
 
-        return (
-            f"Your opening balance is "
-            f"{value:,.2f}."
-        )
+        return f"Your opening balance is " f"{value:,.2f}."
 
     if "closing balance" in normalized:
         value = analysis["closing_balance"]
@@ -125,10 +151,7 @@ def answer_deterministic_question(
         if value is None:
             return "The closing balance is not available."
 
-        return (
-            f"Your closing balance is "
-            f"{value:,.2f}."
-        )
+        return f"Your closing balance is " f"{value:,.2f}."
 
     # ---------------------------------------------------------
     # LARGEST DEBIT
@@ -142,8 +165,7 @@ def answer_deterministic_question(
         debit_rows = [
             transaction
             for transaction in transactions
-            if transaction.debit is not None
-            and transaction.debit != 0
+            if transaction.debit is not None and transaction.debit != 0
         ]
 
         if not debit_rows:
@@ -173,8 +195,7 @@ def answer_deterministic_question(
         credit_rows = [
             transaction
             for transaction in transactions
-            if transaction.credit is not None
-            and transaction.credit != 0
+            if transaction.credit is not None and transaction.credit != 0
         ]
 
         if not credit_rows:
