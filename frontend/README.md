@@ -342,9 +342,9 @@ The backend remains responsible for:
 Current project-level validation as of **22 September 2026** includes:
 
 ```text
-153 backend tests passing
+156 backend tests passing
 GitHub Actions CI passing
-Heroku release v16 verified
+Heroku release v17 verified
 Production health endpoint verified
 Unified assistant production smoke test verified
 Cross-capability follow-up production regression verified

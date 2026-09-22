@@ -52,8 +52,8 @@ The internship/project handover remains within the original internship window en
 
 The current production build has passed:
 
-- **153/153 automated backend tests**
-- GitHub Actions CI on commit `ebf1a47`
+- **156/156 automated backend tests**
+- GitHub Actions CI on production code commit `a04d7b1`
 - Synthetic CSV upload and deterministic analysis
 - Verified statement Q&A
 - Natural financial-language handling
@@ -70,6 +70,7 @@ The current production build has passed:
 ### Recent production checkpoints
 
 ```text
+a04d7b1  Harden statement intelligence edge cases
 ebf1a47  Harden cross-capability statement follow-ups
 153df3b  Harden unified assistant capability routing
 2e65783  Add project formatting configuration
@@ -1108,7 +1109,7 @@ git diff --check
 Current automated backend result:
 
 ```text
-153 tests passed
+156 tests passed
 ```
 
 Current regression coverage includes:
@@ -1133,7 +1134,7 @@ The current backend commit `ebf1a47` passed GitHub Actions CI.
 The latest production backend deployment was verified as:
 
 ```text
-HEROKU_RELEASE_V16_OK
+HEROKU_RELEASE_V17_OK
 HEALTH_ENDPOINT_OK
 UNIFIED_ASSISTANT_SMOKE_OK
 CROSS_CAPABILITY_FOLLOW_UP_OK
@@ -1266,9 +1267,9 @@ Unified banking-assistant UX and routing
 Natural financial-language hardening
 Unified capability-routing hardening
 Cross-capability follow-up hardening
-153-test backend suite verified
+156-test backend suite verified
 GitHub Actions CI verified
-Heroku release v16 verified
+Heroku release v17 verified
 25 Sep 2026
 Original internship handover window
 ```
@@ -1286,9 +1287,9 @@ The **ABL Customer Statement Intelligence Suite** is currently:
 ```text
 PRODUCTION FUNCTIONAL
 UNIFIED ASSISTANT DEPLOYED
-153 BACKEND TESTS PASSING
+156 BACKEND TESTS PASSING
 GITHUB ACTIONS CI PASSING
-HEROKU RELEASE V16 VERIFIED
+HEROKU RELEASE V17 VERIFIED
 SEO HARDENED
 PERFORMANCE VALIDATED
 FINAL DOCUMENTATION & HANDOVER PREPARATION IN PROGRESS

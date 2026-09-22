@@ -312,8 +312,8 @@ https://pure-temple-45004-09958cbb6652.herokuapp.com
 Current verified release:
 
 ```text
-Heroku release v16
-Commit ebf1a47
+Heroku release v17
+Commit a04d7b1
 ```
 
 Health endpoint:
@@ -1528,7 +1528,7 @@ The backend uses automated `unittest` regression coverage.
 Current verified result:
 
 ```text
-153 tests passed
+156 tests passed
 ```
 
 Coverage includes:
@@ -1570,8 +1570,8 @@ PASSING
 Current production backend validation as of 22 September 2026:
 
 ```text
-Heroku release v16
-Commit ebf1a47
+Heroku release v17
+Commit a04d7b1
 GET /health -> ok
 ```
 
@@ -1810,10 +1810,10 @@ Recurring Payment Pipeline               COMPLETE
 Statement Hybrid Q&A                     COMPLETE
 Policy RAG Pipeline                      COMPLETE
 Input / Failure Hardening                COMPLETE
-153-Test Backend Regression Suite        PASSING
+156-Test Backend Regression Suite        PASSING
 GitHub Actions CI                        PASSING
 Production Deployment                    COMPLETE
-Heroku Release v16 Validation            COMPLETE
+Heroku Release v17 Validation            COMPLETE
 SEO Hardening                            COMPLETE
 Performance Validation                   COMPLETE
 Architecture Documentation               UPDATED
