@@ -21,7 +21,6 @@ from backend.app.services.subscription_analysis import (
     detect_recurring_payments,
 )
 
-
 router = APIRouter(
     prefix="/assistant",
     tags=["Assistant"],
@@ -88,9 +87,7 @@ class AssistantQuestion(BaseModel):
         normalized = value.strip()
 
         if not normalized:
-            raise ValueError(
-                "Question must not be blank."
-            )
+            raise ValueError("Question must not be blank.")
 
         return normalized
 
@@ -161,23 +158,16 @@ RECURRING_PHRASES = (
 def _normalize_question(
     question: str,
 ) -> str:
-    return " ".join(
-        question.lower().split()
-    )
+    return " ".join(question.lower().split())
 
 
 def _contains_any_phrase(
     question: str,
     phrases: tuple[str, ...],
 ) -> bool:
-    normalized = _normalize_question(
-        question
-    )
+    normalized = _normalize_question(question)
 
-    return any(
-        phrase in normalized
-        for phrase in phrases
-    )
+    return any(phrase in normalized for phrase in phrases)
 
 
 def resolve_assistant_capability(
@@ -237,15 +227,10 @@ def _format_recurring_answer(
 
     for payment in recurring_payments:
         candidate_summaries.append(
-            (
-                f'{payment["description"]} '
-                f'({payment["occurrences"]} occurrences)'
-            )
+            (f'{payment["description"]} ' f'({payment["occurrences"]} occurrences)')
         )
 
-    joined = ", ".join(
-        candidate_summaries
-    )
+    joined = ", ".join(candidate_summaries)
 
     return (
         f"Detected {len(recurring_payments)} "
@@ -309,33 +294,20 @@ def assistant_chat(
 
     if capability == "recurring":
         transactions = [
-            StatementLine(
-                **row.model_dump()
-            )
-            for row in request.statement_data
+            StatementLine(**row.model_dump()) for row in request.statement_data
         ]
 
-        recurring_payments = (
-            detect_recurring_payments(
-                transactions
-            )
-        )
+        recurring_payments = detect_recurring_payments(transactions)
 
         return {
             "question": request.question,
             "capability": "recurring",
             "method": "deterministic_recurring_rules",
-            "answer": _format_recurring_answer(
-                recurring_payments
-            ),
+            "answer": _format_recurring_answer(recurring_payments),
             "sources": [],
             "structured_data": {
-                "recurring_payment_count": len(
-                    recurring_payments
-                ),
-                "recurring_payments": (
-                    recurring_payments
-                ),
+                "recurring_payment_count": len(recurring_payments),
+                "recurring_payments": (recurring_payments),
             },
         }
 
@@ -349,13 +321,8 @@ def assistant_chat(
     statement_result = ask_statement_question(
         StatementQuestion(
             question=request.question,
-            statement_data=[
-                row.model_dump()
-                for row in request.statement_data
-            ],
-            conversation_history=(
-                request.conversation_history
-            ),
+            statement_data=[row.model_dump() for row in request.statement_data],
+            conversation_history=(request.conversation_history),
         )
     )
 

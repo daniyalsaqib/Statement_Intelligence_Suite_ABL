@@ -23,9 +23,7 @@ def txn(
     )
 
 
-class TestRecurringPaymentRegressions(
-    unittest.TestCase
-):
+class TestRecurringPaymentRegressions(unittest.TestCase):
 
     def test_empty_statement(self):
         self.assertEqual(

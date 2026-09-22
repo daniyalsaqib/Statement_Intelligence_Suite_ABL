@@ -11,9 +11,7 @@ from backend.app.services.statement_parser import (
     parse_statement_csv,
 )
 
-SAMPLE_CSV_PATH = (
-    Path(__file__).resolve().parents[1] / "data" / "sample_statement.csv"
-)
+SAMPLE_CSV_PATH = Path(__file__).resolve().parents[1] / "data" / "sample_statement.csv"
 
 
 def _parse(text: str, *, encoding: str = "utf-8") -> list:
@@ -51,8 +49,7 @@ class StatementParserTests(unittest.TestCase):
 
     def test_b_capitalized_headers(self):
         csv_text = (
-            "Date,Description,Debit,Credit,Balance\n"
-            "2026-07-02,Netflix,1500,,48500\n"
+            "Date,Description,Debit,Credit,Balance\n" "2026-07-02,Netflix,1500,,48500\n"
         )
         rows = _parse(csv_text)
         self.assertEqual(len(rows), 1)
@@ -69,7 +66,9 @@ class StatementParserTests(unittest.TestCase):
         self.assertEqual(rows[0].debit, 1500.0)
 
     def test_d_utf8_bom(self):
-        csv_text = "date,description,debit,credit,balance\n2026-07-02,Netflix,1500,,48500\n"
+        csv_text = (
+            "date,description,debit,credit,balance\n2026-07-02,Netflix,1500,,48500\n"
+        )
         rows = parse_statement_csv(csv_text.encode("utf-8-sig"))
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0].description, "Netflix")
@@ -125,8 +124,7 @@ class StatementParserTests(unittest.TestCase):
 
     def test_i_semicolon_delimited(self):
         csv_text = (
-            "date;description;debit;credit;balance\n"
-            "2026-07-02;Netflix;1500;;48500\n"
+            "date;description;debit;credit;balance\n" "2026-07-02;Netflix;1500;;48500\n"
         )
         rows = _parse(csv_text)
         self.assertEqual(len(rows), 1)
@@ -139,7 +137,10 @@ class StatementParserTests(unittest.TestCase):
             _parse(csv_text)
         message = str(ctx.exception)
         self.assertIn("Missing required CSV column: balance", message)
-        self.assertIn("Expected columns include: date, description, debit, credit, balance.", message)
+        self.assertIn(
+            "Expected columns include: date, description, debit, credit, balance.",
+            message,
+        )
 
     def test_k_invalid_numeric_value(self):
         csv_text = (
@@ -151,10 +152,7 @@ class StatementParserTests(unittest.TestCase):
         self.assertEqual(str(ctx.exception), 'Row 2: invalid debit amount "Rs ABC"')
 
     def test_l_ambiguous_amount_only_schema_rejected(self):
-        csv_text = (
-            "date,description,amount,balance\n"
-            "2026-07-02,Netflix,1500,48500\n"
-        )
+        csv_text = "date,description,amount,balance\n" "2026-07-02,Netflix,1500,48500\n"
         with self.assertRaises(StatementParseError) as ctx:
             _parse(csv_text)
         message = str(ctx.exception)
@@ -176,8 +174,7 @@ class StatementParserTests(unittest.TestCase):
 
     def test_ambiguous_date_rejected(self):
         csv_text = (
-            "date,description,debit,credit,balance\n"
-            "01/02/2026,Netflix,1500,,48500\n"
+            "date,description,debit,credit,balance\n" "01/02/2026,Netflix,1500,,48500\n"
         )
         with self.assertRaises(StatementParseError) as ctx:
             _parse(csv_text)
@@ -185,8 +182,7 @@ class StatementParserTests(unittest.TestCase):
 
     def test_unambiguous_us_style_date(self):
         csv_text = (
-            "date,description,debit,credit,balance\n"
-            "02/13/2026,Netflix,1500,,48500\n"
+            "date,description,debit,credit,balance\n" "02/13/2026,Netflix,1500,,48500\n"
         )
         rows = _parse(csv_text)
         self.assertEqual(rows[0].date, date(2026, 2, 13))

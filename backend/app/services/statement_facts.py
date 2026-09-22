@@ -24,31 +24,20 @@ def build_verified_statement_facts(
     statement_data: list[dict],
 ) -> dict:
 
-    transactions = [
-        StatementLine(**row)
-        for row in statement_data
-    ]
+    transactions = [StatementLine(**row) for row in statement_data]
 
-    analysis = analyze_statement(
-        transactions
-    )
+    analysis = analyze_statement(transactions)
 
     debit_rows = [
         transaction
         for transaction in transactions
-        if (
-            transaction.debit is not None
-            and transaction.debit != 0
-        )
+        if (transaction.debit is not None and transaction.debit != 0)
     ]
 
     credit_rows = [
         transaction
         for transaction in transactions
-        if (
-            transaction.credit is not None
-            and transaction.credit != 0
-        )
+        if (transaction.credit is not None and transaction.credit != 0)
     ]
 
     spending_by_month = defaultdict(float)
@@ -56,37 +45,22 @@ def build_verified_statement_facts(
     spending_by_description = defaultdict(float)
 
     for transaction in transactions:
-        month = transaction.date.strftime(
-            "%Y-%m"
-        )
+        month = transaction.date.strftime("%Y-%m")
 
-        if (
-            transaction.debit is not None
-            and transaction.debit != 0
-        ):
-            spending_by_month[month] += (
-                transaction.debit
-            )
+        if transaction.debit is not None and transaction.debit != 0:
+            spending_by_month[month] += transaction.debit
 
-            spending_by_description[
-                transaction.description
-            ] += transaction.debit
+            spending_by_description[transaction.description] += transaction.debit
 
-        if (
-            transaction.credit is not None
-            and transaction.credit != 0
-        ):
-            credits_by_month[month] += (
-                transaction.credit
-            )
+        if transaction.credit is not None and transaction.credit != 0:
+            credits_by_month[month] += transaction.credit
 
     largest_debit = None
 
     if debit_rows:
         row = max(
             debit_rows,
-            key=lambda transaction:
-                transaction.debit or 0,
+            key=lambda transaction: transaction.debit or 0,
         )
 
         largest_debit = {
@@ -100,8 +74,7 @@ def build_verified_statement_facts(
     if credit_rows:
         row = max(
             credit_rows,
-            key=lambda transaction:
-                transaction.credit or 0,
+            key=lambda transaction: transaction.credit or 0,
         )
 
         largest_credit = {
@@ -111,62 +84,23 @@ def build_verified_statement_facts(
         }
 
     return {
-        "transaction_count":
-            analysis["transaction_count"],
-
-        "debit_transaction_count":
-            len(debit_rows),
-
-        "credit_transaction_count":
-            len(credit_rows),
-
-        "total_debit":
-            _money(
-                analysis["total_debit"]
-            ),
-
-        "total_credit":
-            _money(
-                analysis["total_credit"]
-            ),
-
-        "opening_balance":
-            _money(
-                analysis["opening_balance"]
-            ),
-
-        "closing_balance":
-            _money(
-                analysis["closing_balance"]
-            ),
-
+        "transaction_count": analysis["transaction_count"],
+        "debit_transaction_count": len(debit_rows),
+        "credit_transaction_count": len(credit_rows),
+        "total_debit": _money(analysis["total_debit"]),
+        "total_credit": _money(analysis["total_credit"]),
+        "opening_balance": _money(analysis["opening_balance"]),
+        "closing_balance": _money(analysis["closing_balance"]),
         "spending_by_month": {
-            month: _money(amount)
-            for month, amount
-            in sorted(
-                spending_by_month.items()
-            )
+            month: _money(amount) for month, amount in sorted(spending_by_month.items())
         },
-
         "credits_by_month": {
-            month: _money(amount)
-            for month, amount
-            in sorted(
-                credits_by_month.items()
-            )
+            month: _money(amount) for month, amount in sorted(credits_by_month.items())
         },
-
         "spending_by_description": {
             description: _money(amount)
-            for description, amount
-            in sorted(
-                spending_by_description.items()
-            )
+            for description, amount in sorted(spending_by_description.items())
         },
-
-        "largest_debit":
-            largest_debit,
-
-        "largest_credit":
-            largest_credit,
+        "largest_debit": largest_debit,
+        "largest_credit": largest_credit,
     }

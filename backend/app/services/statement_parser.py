@@ -150,7 +150,9 @@ def _is_blank_row(row: dict, field_map: dict[str, str]) -> bool:
     return all(not _cell(row, field_map, col).strip() for col in CANONICAL_COLUMNS)
 
 
-def _parse_amount(raw: str, field: str, row_num: int, *, required: bool) -> Optional[float]:
+def _parse_amount(
+    raw: str, field: str, row_num: int, *, required: bool
+) -> Optional[float]:
     value = raw.strip()
     if not value:
         if required:

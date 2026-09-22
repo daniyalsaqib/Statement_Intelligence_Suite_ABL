@@ -8,18 +8,15 @@ from backend.app.db.policy_vector_store import (
 )
 from backend.app.services.llm_service import ask_llm
 
-
 logger = logging.getLogger(__name__)
 
 
 LLM_UNAVAILABLE_DETAIL = (
-    "Could not generate an answer from the policy assistant. "
-    "Please try again."
+    "Could not generate an answer from the policy assistant. " "Please try again."
 )
 
 POLICY_SEARCH_UNAVAILABLE_DETAIL = (
-    "Policy search is temporarily unavailable. "
-    "Please try again."
+    "Policy search is temporarily unavailable. " "Please try again."
 )
 
 
@@ -56,9 +53,7 @@ class PolicyQuestion(BaseModel):
         normalized = value.strip()
 
         if not normalized:
-            raise ValueError(
-                "Question must not be blank."
-            )
+            raise ValueError("Question must not be blank.")
 
         return normalized
 
@@ -68,14 +63,10 @@ def _call_llm(prompt: str) -> str:
         answer = ask_llm(prompt)
 
     except Exception as exc:
-        status = (
-            getattr(exc, "status_code", None)
-            or getattr(exc, "code", None)
-        )
+        status = getattr(exc, "status_code", None) or getattr(exc, "code", None)
 
         logger.error(
-            "LLM request failed: "
-            "provider=groq exception_type=%s status=%s",
+            "LLM request failed: " "provider=groq exception_type=%s status=%s",
             type(exc).__name__,
             status,
         )
@@ -86,9 +77,7 @@ def _call_llm(prompt: str) -> str:
         )
 
     if answer is None or not str(answer).strip():
-        logger.error(
-            "LLM provider returned an empty response."
-        )
+        logger.error("LLM provider returned an empty response.")
 
         raise HTTPException(
             status_code=502,
@@ -112,24 +101,17 @@ def ask_policy_question(
 
     except Exception as exc:
         logger.error(
-            "Policy retrieval failed: "
-            "exception_type=%s",
+            "Policy retrieval failed: " "exception_type=%s",
             type(exc).__name__,
         )
 
         raise HTTPException(
             status_code=503,
-            detail=(
-                POLICY_SEARCH_UNAVAILABLE_DETAIL
-            ),
+            detail=(POLICY_SEARCH_UNAVAILABLE_DETAIL),
         ) from exc
 
     # Smaller cosine distance means a better semantic match.
-    relevant_results = [
-        result
-        for result in results
-        if result["distance"] <= 0.75
-    ]
+    relevant_results = [result for result in results if result["distance"] <= 0.75]
 
     # Fail closed when the available policy corpus does not
     # contain sufficiently relevant information.
@@ -144,15 +126,12 @@ def ask_policy_question(
         }
 
     # Build context only from retrieved public ABL policy data.
-    context = "\n\n".join(
-        f"""
+    context = "\n\n".join(f"""
 Title: {result["title"]}
 Source: {result["source"]}
 Content:
 {result["content"]}
-"""
-        for result in relevant_results
-    )
+""" for result in relevant_results)
 
     prompt = f"""
 You are an Allied Bank public-policy information assistant.

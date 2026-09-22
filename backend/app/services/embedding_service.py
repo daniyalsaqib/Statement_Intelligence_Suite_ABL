@@ -1,6 +1,5 @@
 from functools import lru_cache
 
-
 MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 
 
@@ -25,16 +24,9 @@ def create_document_embedding(
 ) -> list[float]:
     model = _get_model()
 
-    vector = next(
-        iter(
-            model.passage_embed([text])
-        )
-    )
+    vector = next(iter(model.passage_embed([text])))
 
-    return [
-        float(value)
-        for value in vector
-    ]
+    return [float(value) for value in vector]
 
 
 def create_query_embedding(
@@ -42,16 +34,9 @@ def create_query_embedding(
 ) -> list[float]:
     model = _get_model()
 
-    vector = next(
-        iter(
-            model.query_embed([text])
-        )
-    )
+    vector = next(iter(model.query_embed([text])))
 
-    return [
-        float(value)
-        for value in vector
-    ]
+    return [float(value) for value in vector]
 
 
 # Backward-compatible helper.

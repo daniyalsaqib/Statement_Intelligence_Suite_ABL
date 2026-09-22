@@ -6,18 +6,10 @@ from backend.app.db.policy_vector_store import (
     replace_policy_documents,
 )
 
-
 create_policy_table()
 
-print(
-    "Preparing and replacing public ABL policy corpus..."
-)
+print("Preparing and replacing public ABL policy corpus...")
 
-replace_policy_documents(
-    POLICY_DOCUMENTS
-)
+replace_policy_documents(POLICY_DOCUMENTS)
 
-print(
-    f"Policy corpus stored successfully: "
-    f"{len(POLICY_DOCUMENTS)} documents."
-)
+print(f"Policy corpus stored successfully: " f"{len(POLICY_DOCUMENTS)} documents.")

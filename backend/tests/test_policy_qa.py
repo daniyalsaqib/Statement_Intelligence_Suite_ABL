@@ -8,7 +8,6 @@ from backend.app.routers.policy_qa import (
     ask_policy_question,
 )
 
-
 RELEVANT_RESULTS = [
     {
         "title": "Unclaimed Deposit Required Documents",
@@ -41,8 +40,7 @@ class TestPolicyQA(unittest.TestCase):
             result = ask_policy_question(
                 PolicyQuestion(
                     question=(
-                        "What documents are required "
-                        "for an unclaimed deposit?"
+                        "What documents are required " "for an unclaimed deposit?"
                     )
                 )
             )
@@ -77,15 +75,9 @@ class TestPolicyQA(unittest.TestCase):
         with patch(
             "backend.app.routers.policy_qa.search_policy_documents",
             return_value=irrelevant_results,
-        ), patch(
-            "backend.app.routers.policy_qa.ask_llm"
-        ) as mock_llm:
+        ), patch("backend.app.routers.policy_qa.ask_llm") as mock_llm:
 
-            result = ask_policy_question(
-                PolicyQuestion(
-                    question="Something unrelated"
-                )
-            )
+            result = ask_policy_question(PolicyQuestion(question="Something unrelated"))
 
         self.assertEqual(
             result["sources"],
@@ -102,21 +94,13 @@ class TestPolicyQA(unittest.TestCase):
             return_value=RELEVANT_RESULTS,
         ), patch(
             "backend.app.routers.policy_qa.ask_llm",
-            side_effect=RuntimeError(
-                "provider failure"
-            ),
+            side_effect=RuntimeError("provider failure"),
         ):
 
-            with self.assertRaises(
-                HTTPException
-            ) as context:
+            with self.assertRaises(HTTPException) as context:
 
                 ask_policy_question(
-                    PolicyQuestion(
-                        question=(
-                            "What documents are required?"
-                        )
-                    )
+                    PolicyQuestion(question=("What documents are required?"))
                 )
 
         self.assertEqual(

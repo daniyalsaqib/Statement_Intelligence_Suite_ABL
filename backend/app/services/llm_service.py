@@ -3,7 +3,6 @@ import os
 from dotenv import load_dotenv
 from groq import Groq
 
-
 load_dotenv()
 
 
@@ -22,9 +21,7 @@ def ask_llm(prompt: str) -> str:
     api_key = os.getenv("GROQ_API_KEY")
 
     if not api_key:
-        raise RuntimeError(
-            "GROQ_API_KEY is not configured."
-        )
+        raise RuntimeError("GROQ_API_KEY is not configured.")
 
     model = (
         os.getenv(
@@ -74,12 +71,7 @@ def ask_llm(prompt: str) -> str:
     if not completion.choices:
         return ""
 
-    content = (
-        completion
-        .choices[0]
-        .message
-        .content
-    )
+    content = completion.choices[0].message.content
 
     if content is None:
         return ""

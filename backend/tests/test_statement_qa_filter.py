@@ -25,9 +25,7 @@ def row(
     }
 
 
-class TestStatementQAFilterRegressions(
-    unittest.TestCase
-):
+class TestStatementQAFilterRegressions(unittest.TestCase):
 
     def test_no_month_reference(self):
         result = resolve_month_scopes(
@@ -40,9 +38,7 @@ class TestStatementQAFilterRegressions(
             ],
         )
 
-        self.assertFalse(
-            result.has_month_reference
-        )
+        self.assertFalse(result.has_month_reference)
 
         self.assertEqual(
             result.scopes,
@@ -51,39 +47,25 @@ class TestStatementQAFilterRegressions(
 
     def test_explicit_month_year(self):
         self.assertEqual(
-            extract_month_years(
-                "Show August 2026 transactions"
-            ),
-            [
-                (2026, 8)
-            ],
+            extract_month_years("Show August 2026 transactions"),
+            [(2026, 8)],
         )
 
     def test_abbreviated_month_year(self):
         self.assertEqual(
-            extract_month_years(
-                "Show Aug 2026 transactions"
-            ),
-            [
-                (2026, 8)
-            ],
+            extract_month_years("Show Aug 2026 transactions"),
+            [(2026, 8)],
         )
 
     def test_sept_alias(self):
         self.assertEqual(
-            extract_month_years(
-                "Show Sept 2026 transactions"
-            ),
-            [
-                (2026, 9)
-            ],
+            extract_month_years("Show Sept 2026 transactions"),
+            [(2026, 9)],
         )
 
     def test_shared_year(self):
         self.assertEqual(
-            extract_month_years(
-                "Compare July and August 2026"
-            ),
+            extract_month_years("Compare July and August 2026"),
             [
                 (2026, 7),
                 (2026, 8),
@@ -92,12 +74,7 @@ class TestStatementQAFilterRegressions(
 
     def test_distinct_years(self):
         self.assertEqual(
-            extract_month_years(
-                (
-                    "Compare July 2025 and "
-                    "August 2026"
-                )
-            ),
+            extract_month_years(("Compare July 2025 and " "August 2026")),
             [
                 (2025, 7),
                 (2026, 8),
@@ -106,12 +83,7 @@ class TestStatementQAFilterRegressions(
 
     def test_same_month_two_years(self):
         self.assertEqual(
-            extract_month_years(
-                (
-                    "Compare August 2025 and "
-                    "August 2026"
-                )
-            ),
+            extract_month_years(("Compare August 2025 and " "August 2026")),
             [
                 (2025, 8),
                 (2026, 8),
@@ -120,12 +92,8 @@ class TestStatementQAFilterRegressions(
 
     def test_duplicate_scope_removed(self):
         self.assertEqual(
-            extract_month_years(
-                "August 2026 versus Aug 2026"
-            ),
-            [
-                (2026, 8)
-            ],
+            extract_month_years("August 2026 versus Aug 2026"),
+            [(2026, 8)],
         )
 
     def test_modal_may_not_month(self):
@@ -139,9 +107,7 @@ class TestStatementQAFilterRegressions(
             ],
         )
 
-        self.assertFalse(
-            result.has_month_reference
-        )
+        self.assertFalse(result.has_month_reference)
 
     def test_real_may_month(self):
         result = resolve_month_scopes(
@@ -156,14 +122,10 @@ class TestStatementQAFilterRegressions(
 
         self.assertEqual(
             result.scopes,
-            (
-                (2026, 5),
-            ),
+            ((2026, 5),),
         )
 
-    def test_multi_scope_filter_preserves_input_order(
-        self
-    ):
+    def test_multi_scope_filter_preserves_input_order(self):
         data = [
             row(
                 "2026-08-02",
@@ -192,10 +154,7 @@ class TestStatementQAFilterRegressions(
         )
 
         self.assertEqual(
-            [
-                item["description"]
-                for item in result
-            ],
+            [item["description"] for item in result],
             [
                 "August B",
                 "July",
@@ -215,9 +174,7 @@ class TestStatementQAFilterRegressions(
                     "Good",
                 ),
             ],
-            [
-                (2026, 8)
-            ],
+            [(2026, 8)],
         )
 
         self.assertEqual(
@@ -232,12 +189,7 @@ class TestStatementQAFilterRegressions(
 
     def test_backward_compatible_first_scope(self):
         self.assertEqual(
-            extract_month_year(
-                (
-                    "Compare July 2026 and "
-                    "August 2026"
-                )
-            ),
+            extract_month_year(("Compare July 2026 and " "August 2026")),
             (
                 2026,
                 7,

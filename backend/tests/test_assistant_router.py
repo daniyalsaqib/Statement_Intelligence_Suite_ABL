@@ -6,7 +6,6 @@ from fastapi.testclient import TestClient
 
 from backend.app.routers.assistant import router
 
-
 app = FastAPI()
 app.include_router(router)
 
@@ -31,9 +30,7 @@ def row(
 
 class TestAssistantRouter(unittest.TestCase):
 
-    @patch(
-        "backend.app.routers.assistant.ask_statement_question"
-    )
+    @patch("backend.app.routers.assistant.ask_statement_question")
     def test_statement_is_default_when_statement_is_loaded(
         self,
         mock_statement,
@@ -80,17 +77,14 @@ class TestAssistantRouter(unittest.TestCase):
 
         mock_statement.assert_called_once()
 
-    @patch(
-        "backend.app.routers.assistant.ask_policy_question"
-    )
+    @patch("backend.app.routers.assistant.ask_policy_question")
     def test_policy_signal_routes_to_policy_rag(
         self,
         mock_policy,
     ):
         mock_policy.return_value = {
             "question": (
-                "What documents are required to claim "
-                "an unclaimed deposit?"
+                "What documents are required to claim " "an unclaimed deposit?"
             ),
             "answer": "Policy answer.",
             "sources": [
@@ -105,8 +99,7 @@ class TestAssistantRouter(unittest.TestCase):
             "/assistant/chat",
             json={
                 "question": (
-                    "What documents are required to claim "
-                    "an unclaimed deposit?"
+                    "What documents are required to claim " "an unclaimed deposit?"
                 ),
                 "statement_data": [
                     row(
@@ -147,9 +140,7 @@ class TestAssistantRouter(unittest.TestCase):
         response = client.post(
             "/assistant/chat",
             json={
-                "question": (
-                    "Do I have any recurring payments?"
-                ),
+                "question": ("Do I have any recurring payments?"),
                 "statement_data": [
                     row(
                         "2026-07-02",
@@ -183,15 +174,11 @@ class TestAssistantRouter(unittest.TestCase):
             "deterministic_recurring_rules",
         )
         self.assertEqual(
-            body["structured_data"][
-                "recurring_payment_count"
-            ],
+            body["structured_data"]["recurring_payment_count"],
             1,
         )
         self.assertEqual(
-            body["structured_data"][
-                "recurring_payments"
-            ][0]["description"],
+            body["structured_data"]["recurring_payments"][0]["description"],
             "Netflix",
         )
 
@@ -201,9 +188,7 @@ class TestAssistantRouter(unittest.TestCase):
         response = client.post(
             "/assistant/chat",
             json={
-                "question": (
-                    "Show my recurring payments."
-                ),
+                "question": ("Show my recurring payments."),
             },
         )
 
@@ -218,9 +203,7 @@ class TestAssistantRouter(unittest.TestCase):
         response = client.post(
             "/assistant/chat",
             json={
-                "question": (
-                    "How much did I spend?"
-                ),
+                "question": ("How much did I spend?"),
             },
         )
 
@@ -235,9 +218,7 @@ class TestAssistantRouter(unittest.TestCase):
         response = client.post(
             "/assistant/chat",
             json={
-                "question": (
-                    "How much did I spend?"
-                ),
+                "question": ("How much did I spend?"),
                 "statement_data": [
                     row(
                         "2026-08-01",
@@ -266,9 +247,7 @@ class TestAssistantRouter(unittest.TestCase):
         response = client.post(
             "/assistant/chat",
             json={
-                "question": (
-                    "How much did I spend?"
-                ),
+                "question": ("How much did I spend?"),
                 "statement_data": [
                     row(
                         "2026-08-01",

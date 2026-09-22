@@ -3,7 +3,6 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Optional
 
-
 MONTH_NUMBER_TO_NAME = {
     1: "January",
     2: "February",
@@ -62,9 +61,7 @@ _MONTH_YEAR_RE = re.compile(
     re.IGNORECASE,
 )
 
-_YEAR_RE = re.compile(
-    r"\b(\d{4})\b"
-)
+_YEAR_RE = re.compile(r"\b(\d{4})\b")
 
 
 @dataclass(frozen=True)
@@ -82,9 +79,7 @@ def _mentioned_month_numbers(
 
     months = []
 
-    for match in _MONTH_RE.finditer(
-        question
-    ):
+    for match in _MONTH_RE.finditer(question):
         alias = match.group(1).lower()
 
         # "May" is both a month and an English modal verb.
@@ -96,39 +91,23 @@ def _mentioned_month_numbers(
         #
         # Real month references such as "in May" and
         # "May 2026" continue to work.
-        if (
-            alias == "may"
-            and not question[
-                :match.start()
-            ].strip()
-        ):
-            remainder = question[
-                match.end():
-            ]
+        if alias == "may" and not question[: match.start()].strip():
+            remainder = question[match.end() :]
 
             if re.match(
-                (
-                    r"\s+(?:"
-                    r"i|we|you|he|she|they|it|be"
-                    r")\b"
-                ),
+                (r"\s+(?:" r"i|we|you|he|she|they|it|be" r")\b"),
                 remainder,
                 re.IGNORECASE,
             ):
                 continue
 
-        month_number = (
-            _MONTH_NAME_TO_NUMBER[
-                alias
-            ]
-        )
+        month_number = _MONTH_NAME_TO_NUMBER[alias]
 
         if month_number not in months:
-            months.append(
-                month_number
-            )
+            months.append(month_number)
 
     return months
+
 
 def extract_month_years(
     question: str,
@@ -136,43 +115,27 @@ def extract_month_years(
     if not question:
         return []
 
-    months = _mentioned_month_numbers(
-        question
-    )
+    months = _mentioned_month_numbers(question)
 
     years = list(
-        dict.fromkeys(
-            int(match.group(1))
-            for match in _YEAR_RE.finditer(
-                question
-            )
-        )
+        dict.fromkeys(int(match.group(1)) for match in _YEAR_RE.finditer(question))
     )
 
     # One shared year can apply to several named months:
     # "July and August 2026".
     if months and len(years) == 1:
-        return [
-            (years[0], month)
-            for month in months
-        ]
+        return [(years[0], month) for month in months]
 
     # Otherwise retain directly paired month/year references.
     scopes = [
         (
             int(match.group(2)),
-            _MONTH_NAME_TO_NUMBER[
-                match.group(1).lower()
-            ],
+            _MONTH_NAME_TO_NUMBER[match.group(1).lower()],
         )
-        for match in _MONTH_YEAR_RE.finditer(
-            question
-        )
+        for match in _MONTH_YEAR_RE.finditer(question)
     ]
 
-    return list(
-        dict.fromkeys(scopes)
-    )
+    return list(dict.fromkeys(scopes))
 
 
 def extract_month_year(
@@ -182,9 +145,7 @@ def extract_month_year(
     Backward-compatible helper for callers that expect
     one month/year scope.
     """
-    scopes = extract_month_years(
-        question
-    )
+    scopes = extract_month_years(question)
 
     return scopes[0] if scopes else None
 
@@ -193,10 +154,7 @@ def month_year_label(
     year: int,
     month: int,
 ) -> str:
-    return (
-        f"{MONTH_NUMBER_TO_NAME[month]} "
-        f"{year}"
-    )
+    return f"{MONTH_NUMBER_TO_NAME[month]} " f"{year}"
 
 
 def _parse_iso_date(
@@ -209,9 +167,7 @@ def _parse_iso_date(
         return None
 
     try:
-        return date.fromisoformat(
-            value.strip()
-        )
+        return date.fromisoformat(value.strip())
 
     except ValueError:
         return None
@@ -230,21 +186,12 @@ def _years_present_for_month(
         ):
             continue
 
-        parsed = _parse_iso_date(
-            row.get("date")
-        )
+        parsed = _parse_iso_date(row.get("date"))
 
-        if (
-            parsed is not None
-            and parsed.month == month
-        ):
-            years.add(
-                parsed.year
-            )
+        if parsed is not None and parsed.month == month:
+            years.add(parsed.year)
 
-    return sorted(
-        years
-    )
+    return sorted(years)
 
 
 def resolve_month_scopes(
@@ -257,9 +204,7 @@ def resolve_month_scopes(
     Month-only questions are allowed when the requested month
     exists in exactly one year in the supplied statement.
     """
-    months = _mentioned_month_numbers(
-        question
-    )
+    months = _mentioned_month_numbers(question)
 
     if not months:
         return MonthScopeResolution(
@@ -267,15 +212,11 @@ def resolve_month_scopes(
             has_month_reference=False,
         )
 
-    direct_scopes = extract_month_years(
-        question
-    )
+    direct_scopes = extract_month_years(question)
 
     if direct_scopes:
         return MonthScopeResolution(
-            scopes=tuple(
-                direct_scopes
-            ),
+            scopes=tuple(direct_scopes),
             has_month_reference=True,
         )
 
@@ -287,18 +228,13 @@ def resolve_month_scopes(
             month,
         )
 
-        name = MONTH_NUMBER_TO_NAME[
-            month
-        ]
+        name = MONTH_NUMBER_TO_NAME[month]
 
         if not years:
             return MonthScopeResolution(
                 scopes=(),
                 has_month_reference=True,
-                error=(
-                    f"No transactions found for "
-                    f"{name}."
-                ),
+                error=(f"No transactions found for " f"{name}."),
             )
 
         if len(years) > 1:
@@ -319,11 +255,7 @@ def resolve_month_scopes(
         )
 
     return MonthScopeResolution(
-        scopes=tuple(
-            dict.fromkeys(
-                resolved
-            )
-        ),
+        scopes=tuple(dict.fromkeys(resolved)),
         has_month_reference=True,
     )
 
@@ -341,12 +273,9 @@ def filter_transactions_by_month_year(
 
 def filter_transactions_by_scopes(
     statement_data: list[dict],
-    scopes: list[tuple[int, int]]
-    | tuple[tuple[int, int], ...],
+    scopes: list[tuple[int, int]] | tuple[tuple[int, int], ...],
 ) -> list[dict]:
-    scope_set = set(
-        scopes
-    )
+    scope_set = set(scopes)
 
     matching = []
 
@@ -357,9 +286,7 @@ def filter_transactions_by_scopes(
         ):
             continue
 
-        parsed = _parse_iso_date(
-            row.get("date")
-        )
+        parsed = _parse_iso_date(row.get("date"))
 
         if parsed is None:
             continue
@@ -368,8 +295,6 @@ def filter_transactions_by_scopes(
             parsed.year,
             parsed.month,
         ) in scope_set:
-            matching.append(
-                row
-            )
+            matching.append(row)
 
     return matching

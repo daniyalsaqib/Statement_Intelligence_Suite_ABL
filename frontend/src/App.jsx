@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-const API_BASE =
-  import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
 
 const MAX_HISTORY_MESSAGES = 8;
 
@@ -58,9 +57,7 @@ function App() {
     const fileToAnalyze = fileOverride ?? statementFile;
 
     if (!fileToAnalyze) {
-      setStatementUploadError(
-        "Please choose a synthetic CSV statement first.",
-      );
+      setStatementUploadError("Please choose a synthetic CSV statement first.");
       return;
     }
 
@@ -87,18 +84,13 @@ function App() {
 
       if (!response.ok) {
         throw new Error(
-          extractApiError(
-            data,
-            "Could not analyze the statement.",
-          ),
+          extractApiError(data, "Could not analyze the statement."),
         );
       }
 
       const elapsed = performance.now() - startedAt;
 
-      console.log(
-        `Statement processing: ${Math.round(elapsed)} ms`,
-      );
+      console.log(`Statement processing: ${Math.round(elapsed)} ms`);
 
       // Transition ko deliberate feel dene ke liye minimum short delay.
       const minimumProcessingDuration = 600;
@@ -148,9 +140,7 @@ function App() {
   }
 
   async function askAssistantQuestion(promptOverride = null) {
-    const userQuestion = (
-      promptOverride ?? assistantQuestion
-    ).trim();
+    const userQuestion = (promptOverride ?? assistantQuestion).trim();
 
     if (!userQuestion) {
       setAssistantError("Please enter a question.");
@@ -180,21 +170,17 @@ function App() {
     setAssistantQuestion("");
 
     try {
-      const response = await fetch(
-        `${API_BASE}/assistant/chat`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            question: userQuestion,
-            statement_data:
-              statementResult?.transactions ?? [],
-            conversation_history: conversationHistory,
-          }),
+      const response = await fetch(`${API_BASE}/assistant/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-      );
+        body: JSON.stringify({
+          question: userQuestion,
+          statement_data: statementResult?.transactions ?? [],
+          conversation_history: conversationHistory,
+        }),
+      });
 
       const data = await response.json();
 
@@ -251,8 +237,8 @@ function App() {
             </h1>
 
             <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-slate-600">
-              The synthetic CSV is being validated, parsed and
-              analyzed with deterministic backend calculations.
+              The synthetic CSV is being validated, parsed and analyzed with
+              deterministic backend calculations.
             </p>
           </section>
         </main>
@@ -379,9 +365,9 @@ function LandingWorkspace({
         </div>
 
         <p className="mt-3 max-w-xl text-sm leading-6 text-slate-600">
-          Upload a synthetic bank statement, then use one assistant
-          for verified statement calculations, recurring-payment
-          detection and grounded public-policy questions.
+          Upload a synthetic bank statement, then use one assistant for verified
+          statement calculations, recurring-payment detection and grounded
+          public-policy questions.
         </p>
 
         <div className="mt-5 grid grid-cols-3 gap-2">
@@ -458,9 +444,8 @@ function LandingWorkspace({
         </div>
 
         <p className="mt-3 text-xs leading-5 text-slate-500">
-          Public-policy questions work immediately. Uploading a
-          statement unlocks statement calculations and recurring
-          pattern detection.
+          Public-policy questions work immediately. Uploading a statement
+          unlocks statement calculations and recurring pattern detection.
         </p>
       </div>
 
@@ -549,10 +534,22 @@ function StatementWorkspace({
             </div>
 
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              <MetricCard label="Total Debit" value={statementResult.analysis.total_debit} />
-              <MetricCard label="Total Credit" value={statementResult.analysis.total_credit} />
-              <MetricCard label="Opening Balance" value={statementResult.analysis.opening_balance} />
-              <MetricCard label="Closing Balance" value={statementResult.analysis.closing_balance} />
+              <MetricCard
+                label="Total Debit"
+                value={statementResult.analysis.total_debit}
+              />
+              <MetricCard
+                label="Total Credit"
+                value={statementResult.analysis.total_credit}
+              />
+              <MetricCard
+                label="Opening Balance"
+                value={statementResult.analysis.opening_balance}
+              />
+              <MetricCard
+                label="Closing Balance"
+                value={statementResult.analysis.closing_balance}
+              />
             </div>
 
             <div className="mt-3 rounded-xl bg-[#f8fafc] px-4 py-3 text-sm text-slate-600">
@@ -569,9 +566,7 @@ function StatementWorkspace({
                 {showTransactions ? "Hide" : "View"} transaction evidence
               </span>
 
-              <span aria-hidden="true">
-                {showTransactions ? "↑" : "↓"}
-              </span>
+              <span aria-hidden="true">{showTransactions ? "↑" : "↓"}</span>
             </button>
           </div>
         </div>
@@ -631,9 +626,7 @@ function AssistantPanel({
             Verified calculations • recurring patterns • grounded policy
           </p>
 
-          <p className="mt-0.5 text-xs leading-5 text-slate-500">
-            {subtitle}
-          </p>
+          <p className="mt-0.5 text-xs leading-5 text-slate-500">{subtitle}</p>
         </div>
       </div>
 
@@ -657,8 +650,8 @@ function AssistantPanel({
 
             {!hasStatement && (
               <div className="mt-4 rounded-xl border border-blue-100 bg-white px-4 py-3 text-xs leading-5 text-slate-500">
-                Upload a statement to unlock verified financial
-                calculations and recurring-payment detection.
+                Upload a statement to unlock verified financial calculations and
+                recurring-payment detection.
               </div>
             )}
           </div>
@@ -693,11 +686,7 @@ function AssistantPanel({
           value={assistantQuestion}
           onChange={(event) => setAssistantQuestion(event.target.value)}
           onKeyDown={(event) => {
-            if (
-              event.key === "Enter" &&
-              !event.shiftKey &&
-              !loading
-            ) {
+            if (event.key === "Enter" && !event.shiftKey && !loading) {
               event.preventDefault();
               askAssistantQuestion();
             }
@@ -831,9 +820,7 @@ function PolicySources({ sources }) {
 
   return (
     <div className="mt-4 border-t border-slate-100 pt-3">
-      <p className="text-xs font-extrabold text-[#063b6f]">
-        Public sources
-      </p>
+      <p className="text-xs font-extrabold text-[#063b6f]">Public sources</p>
 
       <ul className="mt-2 grid gap-1.5">
         {sources.map((source, index) => (
@@ -938,13 +925,9 @@ function StepCard({ number, title, text }) {
         {number}
       </div>
 
-      <p className="mt-2 text-sm font-extrabold text-[#063b6f]">
-        {title}
-      </p>
+      <p className="mt-2 text-sm font-extrabold text-[#063b6f]">{title}</p>
 
-      <p className="mt-0.5 text-[11px] leading-4 text-slate-500">
-        {text}
-      </p>
+      <p className="mt-0.5 text-[11px] leading-4 text-slate-500">{text}</p>
     </div>
   );
 }
@@ -984,9 +967,7 @@ function MetricCard({ label, value }) {
         {label}
       </p>
 
-      <p className="mt-1 text-lg font-black text-[#063b6f]">
-        {value ?? "N/A"}
-      </p>
+      <p className="mt-1 text-lg font-black text-[#063b6f]">{value ?? "N/A"}</p>
     </div>
   );
 }
@@ -1135,11 +1116,7 @@ function generateRuntimeDemoStatement() {
   const now = new Date();
 
   const monthStarts = [3, 2, 1].map((monthsBack) => {
-    return new Date(
-      now.getFullYear(),
-      now.getMonth() - monthsBack,
-      1,
-    );
+    return new Date(now.getFullYear(), now.getMonth() - monthsBack, 1);
   });
 
   const randomAmount = (min, max) => {
@@ -1196,10 +1173,7 @@ function generateRuntimeDemoStatement() {
       balance,
     });
 
-    const groceries = randomAmount(
-      4500 + index * 500,
-      9500 + index * 700,
-    );
+    const groceries = randomAmount(4500 + index * 500, 9500 + index * 700);
     balance -= groceries;
     rows.push({
       date: dateText(monthDate, 15),
@@ -1240,15 +1214,11 @@ function generateRuntimeDemoStatement() {
     ),
   ];
 
-  const stamp = new Date()
-    .toISOString()
-    .replace(/[:.]/g, "-");
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
 
-  return new File(
-    [csvLines.join("\n")],
-    `runtime_demo_${stamp}.csv`,
-    { type: "text/csv" },
-  );
+  return new File([csvLines.join("\n")], `runtime_demo_${stamp}.csv`, {
+    type: "text/csv",
+  });
 }
 
 function extractApiError(data, fallback) {

@@ -8,7 +8,6 @@ from backend.app.services.embedding_service import (
     create_query_embedding,
 )
 
-
 load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -16,9 +15,7 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 
 def get_connection():
     if not DATABASE_URL:
-        raise RuntimeError(
-            "DATABASE_URL is not configured."
-        )
+        raise RuntimeError("DATABASE_URL is not configured.")
 
     return psycopg.connect(DATABASE_URL)
 
@@ -26,10 +23,7 @@ def get_connection():
 def _vector_string(
     embedding: list[float],
 ) -> str:
-    return "[" + ",".join(
-        str(value)
-        for value in embedding
-    ) + "]"
+    return "[" + ",".join(str(value) for value in embedding) + "]"
 
 
 def create_policy_table():
@@ -37,12 +31,9 @@ def create_policy_table():
 
     try:
         with connection.cursor() as cursor:
-            cursor.execute(
-                "CREATE EXTENSION IF NOT EXISTS vector;"
-            )
+            cursor.execute("CREATE EXTENSION IF NOT EXISTS vector;")
 
-            cursor.execute(
-                """
+            cursor.execute("""
                 CREATE TABLE IF NOT EXISTS policy_documents (
                     id SERIAL PRIMARY KEY,
                     title TEXT NOT NULL,
@@ -50,8 +41,7 @@ def create_policy_table():
                     content TEXT NOT NULL,
                     embedding vector(384) NOT NULL
                 );
-                """
-            )
+                """)
 
         connection.commit()
 
@@ -68,13 +58,9 @@ def store_policy_document(
     source: str,
     content: str,
 ):
-    embedding = create_document_embedding(
-        content
-    )
+    embedding = create_document_embedding(content)
 
-    vector_string = _vector_string(
-        embedding
-    )
+    vector_string = _vector_string(embedding)
 
     connection = get_connection()
 
@@ -118,9 +104,7 @@ def replace_policy_documents(
     prepared_rows = []
 
     for document in documents:
-        embedding = create_document_embedding(
-            document["text"]
-        )
+        embedding = create_document_embedding(document["text"])
 
         prepared_rows.append(
             (
@@ -135,12 +119,10 @@ def replace_policy_documents(
 
     try:
         with connection.cursor() as cursor:
-            cursor.execute(
-                """
+            cursor.execute("""
                 TRUNCATE TABLE policy_documents
                 RESTART IDENTITY;
-                """
-            )
+                """)
 
             cursor.executemany(
                 """
@@ -167,15 +149,9 @@ def search_policy_documents(
     limit: int = 3,
 ) -> list[dict]:
 
-    question_embedding = (
-        create_query_embedding(
-            question
-        )
-    )
+    question_embedding = create_query_embedding(question)
 
-    vector_string = _vector_string(
-        question_embedding
-    )
+    vector_string = _vector_string(question_embedding)
 
     connection = get_connection()
 

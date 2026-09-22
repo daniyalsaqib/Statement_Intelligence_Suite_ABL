@@ -8,10 +8,7 @@ from backend.app.routers.statement_qa import router as statement_qa_router
 from backend.app.routers.policy_qa import router as policy_qa_router
 from backend.app.routers.assistant import router as assistant_router
 
-
-app = FastAPI(
-    title="ABL Statement Intelligence Suite"
-)
+app = FastAPI(title="ABL Statement Intelligence Suite")
 
 # Allow the local and deployed React frontends to communicate with FastAPI.
 app.add_middleware(
@@ -27,9 +24,7 @@ app.add_middleware(
 )
 
 
-@app.exception_handler(
-    RequestValidationError
-)
+@app.exception_handler(RequestValidationError)
 async def safe_request_validation_error(
     request: Request,
     exc: RequestValidationError,

@@ -6,7 +6,6 @@ from fastapi.testclient import TestClient
 
 from backend.app.routers.statement_qa import router
 
-
 # Create a small isolated FastAPI application for Statement Q&A tests.
 # This avoids starting the entire project just to test this router.
 app = FastAPI()

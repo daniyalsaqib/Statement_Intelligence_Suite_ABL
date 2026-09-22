@@ -21,14 +21,10 @@ def row(
     }
 
 
-class TestVerifiedStatementFactsRegressions(
-    unittest.TestCase
-):
+class TestVerifiedStatementFactsRegressions(unittest.TestCase):
 
     def test_empty_statement_facts(self):
-        facts = build_verified_statement_facts(
-            []
-        )
+        facts = build_verified_statement_facts([])
 
         self.assertEqual(
             facts["transaction_count"],
@@ -45,13 +41,9 @@ class TestVerifiedStatementFactsRegressions(
             0.0,
         )
 
-        self.assertIsNone(
-            facts["opening_balance"]
-        )
+        self.assertIsNone(facts["opening_balance"])
 
-        self.assertIsNone(
-            facts["closing_balance"]
-        )
+        self.assertIsNone(facts["closing_balance"])
 
     def test_direction_counts(self):
         facts = build_verified_statement_facts(
@@ -78,16 +70,12 @@ class TestVerifiedStatementFactsRegressions(
         )
 
         self.assertEqual(
-            facts[
-                "debit_transaction_count"
-            ],
+            facts["debit_transaction_count"],
             2,
         )
 
         self.assertEqual(
-            facts[
-                "credit_transaction_count"
-            ],
+            facts["credit_transaction_count"],
             1,
         )
 
@@ -116,9 +104,7 @@ class TestVerifiedStatementFactsRegressions(
         )
 
         self.assertEqual(
-            facts[
-                "spending_by_month"
-            ],
+            facts["spending_by_month"],
             {
                 "2026-07": 150.0,
                 "2026-08": 200.0,
@@ -144,9 +130,7 @@ class TestVerifiedStatementFactsRegressions(
         )
 
         self.assertEqual(
-            facts[
-                "credits_by_month"
-            ],
+            facts["credits_by_month"],
             {
                 "2026-07": 1000.0,
                 "2026-08": 200.0,
