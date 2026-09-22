@@ -1073,58 +1073,60 @@ def _is_scope_follow_up(
     return normalized.startswith(FOLLOW_UP_STARTERS)
 
 
-def _latest_base_user_question(
+def _answer_from_latest_reusable_user_intent(
     conversation_history: list[ConversationMessage],
+    statement_data: list[dict],
 ) -> str | None:
     """
+    Recover the latest USER question whose financial intent
+    can be answered deterministically from the CURRENT
+    statement scope.
 
-    Return the latest meaningful USER question that can
+    Important:
+    - Assistant messages are never trusted as financial truth.
+    - Scope-only follow-ups are skipped.
+    - Recurring-payment / policy / unrelated user questions
+      are skipped when they do not map to deterministic
+      statement intelligence.
+    - The returned financial answer is recalculated from
+      current statement_data, not copied from chat history.
 
-    provide intent for a conversational follow-up.
-
-
-
-    Assistant answers are deliberately ignored because
-
-    previous assistant output is NOT financial truth.
-
-
-
-    Agar conversation ho:
-
-
+    Example:
 
     User: How much did I spend in August?
-
     Assistant: ...
-
+    User: Which payments keep repeating?
+    Assistant: ...
     User: What about July?
 
-    Assistant: ...
-
-    User: What about June?
-
-
-
-    tou hum backwards ja kar original meaningful user
-
-    question "How much did I spend in August?" recover
-
-    karte hain.
-
+    The recurring question must NOT replace the earlier
+    statement-spending intent. We scan backwards until a
+    reusable deterministic statement intent is found.
     """
 
     for message in reversed(conversation_history):
 
         if message.role != "user":
-
             continue
 
         if _is_scope_follow_up(message.content):
-
             continue
 
-        return message.content
+        # Try the previous user question against the CURRENT
+        # already-filtered statement rows.
+        #
+        # If deterministic statement Q&A cannot answer it,
+        # the message belongs to another capability or is not
+        # reusable as a safe financial follow-up intent.
+        deterministic_answer = answer_deterministic_question(
+            message.content,
+            statement_data,
+        )
+
+        if deterministic_answer is None:
+            continue
+
+        return deterministic_answer
 
     return None
 
@@ -1225,15 +1227,17 @@ def ask_statement_question(
             # Previous assistant answers are never used here.
             # Python still recalculates the answer from statement_data.
             if deterministic_answer is None and _is_scope_follow_up(request.question):
-                previous_user_question = _latest_base_user_question(
-                    request.conversation_history
+                # Recover only a reusable deterministic
+                # statement intent from conversation history.
+                #
+                # This deliberately skips unrelated capability
+                # questions such as recurring-payment or policy
+                # requests that may appear between two
+                # statement questions.
+                deterministic_answer = _answer_from_latest_reusable_user_intent(
+                    request.conversation_history,
+                    matching_rows,
                 )
-
-                if previous_user_question is not None:
-                    deterministic_answer = answer_deterministic_question(
-                        previous_user_question,
-                        matching_rows,
-                    )
 
             if deterministic_answer is not None:
                 return {

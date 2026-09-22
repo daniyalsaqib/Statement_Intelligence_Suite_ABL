@@ -455,6 +455,87 @@ class TestStatementQARegressions(unittest.TestCase):
 
         mock_llm.assert_not_called()
 
+    def test_follow_up_skips_unrelated_capability_question(
+        self,
+    ):
+        # PURPOSE:
+        # Unified assistant history can contain messages from
+        # different internal capabilities.
+        #
+        # A recurring-payment question between two statement
+        # questions must not replace the reusable financial
+        # intent for a later scope-only follow-up.
+
+        statement_data = [
+            row(
+                "2026-07-01",
+                "July Purchase A",
+                debit=40.0,
+                balance=960.0,
+            ),
+            row(
+                "2026-07-02",
+                "July Purchase B",
+                debit=30.0,
+                balance=930.0,
+            ),
+            row(
+                "2026-08-01",
+                "August Purchase",
+                debit=200.0,
+                balance=730.0,
+            ),
+        ]
+
+        response, mock_llm = self._post(
+            "What about July?",
+            statement_data,
+            conversation_history=[
+                {
+                    "role": "user",
+                    "content": "How much did I spend in August?",
+                },
+                {
+                    "role": "assistant",
+                    "content": "Previous verified August answer.",
+                },
+                {
+                    "role": "user",
+                    "content": "Which payments keep repeating?",
+                },
+                {
+                    "role": "assistant",
+                    "content": "Recurring-payment answer.",
+                },
+            ],
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        answer = response.json()["answer"]
+
+        # July spending = 40 + 30 = 70.
+        #
+        # Backend intervening recurring question ko skip
+        # karke earlier spending intent reuse karega.
+        self.assertIn(
+            "70.00",
+            answer,
+        )
+
+        # August amount July answer mein leak nahi hona chahiye.
+        self.assertNotIn(
+            "200.00",
+            answer,
+        )
+
+        # Financial answer deterministic Python se aata hai.
+        # Is follow-up ke liye Groq call nahi honi chahiye.
+        mock_llm.assert_not_called()
+
     # =========================================================
 
     # VERIFIED COMPOUND FINANCIAL QUESTIONS
