@@ -181,6 +181,201 @@ class TestAssistantRouter(unittest.TestCase):
             body["structured_data"]["recurring_payments"][0]["description"],
             "Netflix",
         )
+        # =========================================================
+
+    # NATURAL CAPABILITY ROUTING REGRESSIONS
+    # =========================================================
+    #
+    # PURPOSE:
+    # Unified assistant ko natural user wording se bhi
+    # correct internal capability select karni chahiye.
+    #
+    # Routing deterministic hi rahegi.
+    # LLM capability router nahi banega.
+
+    @patch("backend.app.routers.assistant.ask_policy_question")
+    def test_complaint_language_routes_to_policy(
+        self,
+        mock_policy,
+    ):
+        mock_policy.return_value = {
+            "question": "How do I complain to the bank?",
+            "answer": "Complaint guidance.",
+            "sources": [],
+        }
+
+        response = client.post(
+            "/assistant/chat",
+            json={
+                "question": "How do I complain to the bank?",
+            },
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        body = response.json()
+
+        self.assertEqual(
+            body["capability"],
+            "policy",
+        )
+
+        self.assertEqual(
+            body["method"],
+            "policy_rag",
+        )
+
+        mock_policy.assert_called_once()
+
+    @patch("backend.app.routers.assistant.ask_policy_question")
+    def test_deceased_customer_language_routes_to_policy(
+        self,
+        mock_policy,
+    ):
+        mock_policy.return_value = {
+            "question": "What about deceased customers?",
+            "answer": "Claim guidance.",
+            "sources": [],
+        }
+
+        response = client.post(
+            "/assistant/chat",
+            json={
+                "question": "What about deceased customers?",
+            },
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        self.assertEqual(
+            response.json()["capability"],
+            "policy",
+        )
+
+        mock_policy.assert_called_once()
+
+    @patch("backend.app.routers.assistant.ask_policy_question")
+    def test_schedule_of_charges_routes_to_policy(
+        self,
+        mock_policy,
+    ):
+        mock_policy.return_value = {
+            "question": "What is the schedule of charges?",
+            "answer": "Charges guidance.",
+            "sources": [],
+        }
+
+        response = client.post(
+            "/assistant/chat",
+            json={
+                "question": "What is the schedule of charges?",
+            },
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        self.assertEqual(
+            response.json()["capability"],
+            "policy",
+        )
+
+        mock_policy.assert_called_once()
+
+    def test_payments_keep_repeating_routes_to_recurring(
+        self,
+    ):
+        response = client.post(
+            "/assistant/chat",
+            json={
+                "question": "Which payments keep repeating?",
+                "statement_data": [
+                    row(
+                        "2026-07-02",
+                        "Netflix",
+                        debit=1500.0,
+                        balance=8500.0,
+                    ),
+                    row(
+                        "2026-08-02",
+                        "Netflix",
+                        debit=1500.0,
+                        balance=7000.0,
+                    ),
+                ],
+            },
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        body = response.json()
+
+        self.assertEqual(
+            body["capability"],
+            "recurring",
+        )
+
+        self.assertEqual(
+            body["method"],
+            "deterministic_recurring_rules",
+        )
+
+        self.assertEqual(
+            body["structured_data"]["recurring_payment_count"],
+            1,
+        )
+
+    def test_monthly_payment_language_routes_to_recurring(
+        self,
+    ):
+        response = client.post(
+            "/assistant/chat",
+            json={
+                "question": "What payments do I make every month?",
+                "statement_data": [
+                    row(
+                        "2026-07-05",
+                        "PTCL Internet Bill",
+                        debit=3000.0,
+                        balance=7000.0,
+                    ),
+                    row(
+                        "2026-08-05",
+                        "PTCL Internet Bill",
+                        debit=3000.0,
+                        balance=4000.0,
+                    ),
+                ],
+            },
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+
+        body = response.json()
+
+        self.assertEqual(
+            body["capability"],
+            "recurring",
+        )
+
+        self.assertEqual(
+            body["method"],
+            "deterministic_recurring_rules",
+        )
 
     def test_recurring_requires_statement_data(
         self,

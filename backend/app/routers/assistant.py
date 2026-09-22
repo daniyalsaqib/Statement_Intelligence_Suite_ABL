@@ -117,11 +117,38 @@ AssistantCapability = Literal[
 
 
 POLICY_PHRASES = (
+    # -----------------------------------------------------
+    # GENERAL POLICY / TERMS
+    # -----------------------------------------------------
+    #
+    # Strong policy wording only.
+    # Generic banking words ko policy signal nahi banate,
+    # warna normal statement questions accidentally
+    # policy RAG mein route ho sakte hain.
     "policy",
     "policies",
     "public policy",
     "abl policy",
     "allied bank policy",
+    "terms and conditions",
+    # -----------------------------------------------------
+    # FINANCIAL CONSUMER PROTECTION / COMPLAINTS
+    # -----------------------------------------------------
+    "financial consumer protection",
+    "consumer protection",
+    "customer complaint",
+    "customer complaints",
+    "complain to the bank",
+    "make a complaint",
+    "file a complaint",
+    "complaint handling",
+    "complaint procedure",
+    "complaint process",
+    "grievance",
+    "customer confidentiality",
+    # -----------------------------------------------------
+    # UNCLAIMED DEPOSITS / CLAIMS
+    # -----------------------------------------------------
     "unclaimed deposit",
     "unclaimed deposits",
     "required documents",
@@ -129,29 +156,69 @@ POLICY_PHRASES = (
     "documents required",
     "eligibility",
     "eligible for",
-    "terms and conditions",
-    "complaint procedure",
-    "complaint process",
-    "grievance",
     "claim procedure",
     "claim process",
+    "refund claim",
+    "refund process",
+    "deceased customer",
+    "deceased customers",
+    "succession certificate",
+    "indemnity bond",
+    # -----------------------------------------------------
+    # PUBLIC SCHEDULE OF CHARGES
+    # -----------------------------------------------------
+    "schedule of charges",
 )
 
 
 RECURRING_PHRASES = (
+    # -----------------------------------------------------
+    # DIRECT RECURRING / SUBSCRIPTION LANGUAGE
+    # -----------------------------------------------------
     "recurring",
     "subscription",
     "subscriptions",
+    # -----------------------------------------------------
+    # NATURAL REPETITION LANGUAGE
+    # -----------------------------------------------------
+    #
+    # User ko technical "recurring" word use karna
+    # zaroori nahi hona chahiye.
     "repeated payment",
     "repeated payments",
     "repeat payment",
     "repeat payments",
+    "payments keep repeating",
+    "payment keeps repeating",
+    "which payments repeat",
+    "which payments keep repeating",
     "repeated debit",
     "repeated debits",
+    "repeat debit",
+    "repeat debits",
+    # -----------------------------------------------------
+    # MERCHANT / PERIODIC PAYMENT LANGUAGE
+    # -----------------------------------------------------
     "same merchant",
     "same merchants",
+    "same payment",
+    "same payments",
+    "regular payment",
+    "regular payments",
+    "regular debit",
+    "regular debits",
     "monthly payment",
     "monthly payments",
+    "payment every month",
+    "payments every month",
+    # Natural conversational forms.
+    # Example:
+    # "What payments do I make every month?"
+    "payments do i make every month",
+    "payment do i make every month",
+    "payments do i pay every month",
+    "which payments do i make every month",
+    "paid every month",
 )
 
 
