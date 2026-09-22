@@ -1,10 +1,10 @@
 # ABL Customer Statement Intelligence Suite
 
-> **App 1 of 2 — Production Functional**
+> **Production Functional — Final Hardening & Handover Phase**
 >
 > **Production-functional milestone:** 10 September 2026
-> **Production hardening & documentation phase:** In progress
-> **Latest project update:** 16 September 2026
+> **Unified assistant hardening completed:** 22 September 2026
+> **Latest project update:** 22 September 2026
 > **Developer:** Daniyal Saqib — IT Intern, Allied Bank Internship Program (ABIP)
 > **Sponsor / Reviewer:** Sir Affan Wahid
 
@@ -26,49 +26,137 @@ The project uses **synthetic/local statement data only** and a curated set of **
 
 # Project Status
 
-**Current status:** Production Functional — production polish and documentation in progress.
+**Current status:** Production Functional — conversational hardening complete, with final documentation and handover preparation in progress.
 
-The application reached its main **production-functional milestone on 10 September 2026**. At that point, all three application modules were deployed and production-tested.
+The application reached its main **production-functional milestone on 10 September 2026**. The post-functional phase has focused on making the prototype safer, easier to demonstrate, and more coherent as one banking-intelligence experience.
 
-Work continued after that milestone to improve:
+Production hardening completed or verified to date includes:
 
-- Search-engine metadata
-- Crawler configuration
-- Social-sharing metadata
-- Project favicon
+- Search-engine and social-sharing metadata
 - Frontend performance validation
-- Architecture documentation
-- Final handover documentation
+- Unified assistant workspace UX
+- Deterministic capability routing
+- Natural financial-language handling
+- Safe multi-turn statement follow-ups
+- Cross-capability conversation robustness
+- Deterministic recurring-payment rules
+- Public-policy RAG with fail-closed behavior
+- Project-wide formatting standards
+- Expanded backend regression coverage
+- GitHub Actions CI validation
+- Heroku production deployment and smoke testing
 
-The final internship/project handover remains scheduled within the original internship window ending **25 September 2026**.
+The internship/project handover remains within the original internship window ending **25 September 2026**.
 
-### Core production validation
+### Current production validation
 
-The production-functional build passed:
+The current production build has passed:
 
-- 38/38 automated backend tests
-- Production statement upload and analysis
-- Deterministic statement Q&A
-- Guarded open-ended statement Q&A
+- **153/153 automated backend tests**
+- GitHub Actions CI on commit `ebf1a47`
+- Synthetic CSV upload and deterministic analysis
+- Verified statement Q&A
+- Natural financial-language handling
 - Month-specific filtering
-- Recurring-payment analysis
-- Policy RAG with public Allied Bank sources
+- Multi-turn month follow-ups
+- Cross-capability follow-up regression
+- Deterministic recurring-payment analysis
+- Public-policy RAG
 - Policy fail-closed behavior
-- Cloud policy corpus verification at 7 rows
-- Production validation without new Heroku R14 memory errors
+- Unified `/assistant/chat` routing
+- Heroku health validation
+- Production mixed-capability follow-up smoke testing
 
 ### Recent production checkpoints
 
 ```text
-64c6189  Stabilize Groq agents and optimize policy embeddings
-54c163f  Remove Allied Bank logo from public application
-cb84d32  Add frontend SEO metadata and crawler files
-7fa95a1  Add social preview and project favicon
+ebf1a47  Harden cross-capability statement follow-ups
+153df3b  Harden unified assistant capability routing
+2e65783  Add project formatting configuration
+5d18291  Standardize project formatting
+4d37e82  Harden natural financial language handling
+9d2a678  Unify banking assistant workspace UX
+594774d  Add unified banking assistant router
+9d9b4eb  Add multi-month synthetic statement sample
+f577fff  Add multi-turn statement chat interface
+8b6898f  Add safe multi-turn statement follow-up foundation
 ```
 
 ---
 
-# Modules
+# Unified Banking Intelligence Assistant
+
+The production frontend presents the application as **one conversational banking-intelligence workspace** instead of requiring the user to switch between separate statement, recurring-payment, and policy tools.
+
+The primary conversational endpoint is:
+
+```http
+POST /assistant/chat
+```
+
+The FastAPI backend uses deterministic routing to select one of three internal capabilities:
+
+```text
+Unified User Question
+        |
+        v
+Deterministic Capability Router
+        |
+        +----------------+----------------+
+        |                |                |
+        v                v                v
+   Statement         Recurring          Policy
+ Intelligence       Payment Rules        RAG
+        |                |                |
+        v                v                v
+ Verified Python   Deterministic     PostgreSQL +
+ Facts / Guard      Python Rules       pgvector
+        |                |                |
+        +----------------+----------------+
+                         |
+                         v
+                Unified Response
+                + Provenance
+```
+
+The LLM is **not** used as the capability router. This keeps financial routing predictable, recurring-payment detection deterministic, and policy questions inside the RAG trust boundary.
+
+Response provenance is exposed through method values such as:
+
+```text
+verified_statement_intelligence
+deterministic_recurring_rules
+policy_rag
+```
+
+### Safe multi-turn follow-ups
+
+Recent conversation history can be supplied to the unified assistant to improve follow-up UX.
+
+Conversation history is never treated as authoritative financial truth. When a follow-up changes the time scope, the backend recalculates the answer from the currently supplied statement rows.
+
+Example:
+
+```text
+How much did I spend in August?
+What about July?
+```
+
+The July amount is recomputed from July transactions.
+
+The backend also handles cross-capability conversation history safely:
+
+```text
+How much did I spend in August?
+Which payments keep repeating?
+What about July?
+```
+
+The recurring-payment question does not replace the earlier reusable statement-spending intent. The backend scans backward for a deterministic statement intent that can be safely reapplied to the current scope.
+
+---
+
+# Core Capabilities
 
 ## 1. Statement Intelligence
 
@@ -256,7 +344,7 @@ https://www.abl.com/services/downloads/schedule-of-charges/
 
 The application uses a:
 
-> **Layered client-server architecture with a modular FastAPI backend, hybrid deterministic + LLM processing, and a Retrieval-Augmented Generation subsystem.**
+> **Layered client-server architecture with a modular FastAPI backend, deterministic financial processing, conversational orchestration, and a Retrieval-Augmented Generation subsystem.**
 
 It is implemented as a **modular monolith**, not as a microservices architecture.
 
@@ -278,38 +366,39 @@ For the complete architecture, deployment model, request flows, RAG pipeline, da
                               |
                               v
                  +-------------------------+
-                 | FastAPI Backend         |
-                 | Python 3.12             |
-                 | Hosted on Heroku        |
+                 | /assistant/chat         |
+                 | Unified Assistant       |
                  +------------+------------+
+                              |
+                    Deterministic Routing
                               |
              +----------------+----------------+
              |                |                |
              v                v                v
-      Statement APIs    Statement Q&A      Policy Q&A
+      Statement         Recurring          Policy
+      Intelligence      Rules              RAG
              |                |                |
-             |                |                |
-      +------+-----+          |           FastEmbed
-      |            |          |               |
-      v            v          v               v
- CSV Parser    Recurring   Verified       MiniLM-L6-v2
-      |         Analysis    Python Facts      384D
-      v            |          |               |
- Statement         |          |               v
- Analysis          |          |          PostgreSQL
-      |            |          |           + pgvector
-      v            v          |               |
-   Summary      Candidates    |         Semantic Search
-                              |               |
-                              +-------+-------+
-                                      |
-                                      v
-                                   Groq API
-                           openai/gpt-oss-20b
-                                      |
-                                      v
-                               Grounded Answer
+             v                v                v
+      Verified Python   Deterministic      FastEmbed
+      Facts + Guard     Python Rules       MiniLM 384D
+             |                                 |
+             |                                 v
+             |                           PostgreSQL
+             |                            + pgvector
+             |                                 |
+             |                          Semantic Search
+             |                                 |
+             +----------------+----------------+
+                              |
+                              v
+                           Groq API
+                   openai/gpt-oss-20b
+                              |
+                              v
+                       Grounded Answer
 ```
+
+The specialized endpoints remain available for backward compatibility, while the production frontend uses the unified assistant as its primary conversational interface.
 
 ---
 
@@ -325,12 +414,12 @@ Implemented with:
 
 Responsibilities:
 
-- Statement upload UI
-- Financial-analysis presentation
-- Natural-language question interface
-- Recurring-payment presentation
-- Policy Assistant interface
-- Source-link presentation
+- Synthetic statement upload and analysis
+- Unified conversational assistant workspace
+- Verified financial-analysis presentation
+- Multi-turn statement follow-ups
+- Recurring-payment candidate presentation
+- Policy-source presentation
 
 Hosted on **Vercel**.
 
@@ -343,6 +432,7 @@ Implemented with **FastAPI**.
 Main routers:
 
 ```text
+backend/app/routers/assistant.py
 backend/app/routers/statements.py
 backend/app/routers/statement_qa.py
 backend/app/routers/policy_qa.py
@@ -350,11 +440,15 @@ backend/app/routers/policy_qa.py
 
 Responsibilities:
 
+- Unified capability routing
 - HTTP request handling
 - Input validation
+- Statement conversation-history validation
 - Routing requests into backend services
 - Controlled API errors
-- JSON responses
+- JSON responses with capability/method provenance
+
+The unified assistant router is a thin orchestration layer over the existing statement, recurring-payment, and policy capabilities. The underlying specialized endpoints remain available for backward compatibility.
 
 ---
 
@@ -426,25 +520,25 @@ backend/app/services/llm_service.py
 
 # Final Technology Stack
 
-| Layer | Technology |
-|---|---|
-| Frontend | React.js |
-| Styling | Tailwind CSS |
-| Build Tool | Vite |
-| Frontend Hosting | Vercel |
-| Backend | FastAPI |
-| Backend Language | Python 3.12 |
-| Backend Hosting | Heroku |
-| LLM Provider | Groq |
-| LLM Model | `openai/gpt-oss-20b` |
-| Embedding Runtime | FastEmbed / ONNX |
-| Embedding Model | `sentence-transformers/all-MiniLM-L6-v2` |
-| Embedding Dimensions | 384 |
-| Database | PostgreSQL |
-| Vector Search | pgvector |
-| PostgreSQL Driver | psycopg |
-| Version Control | Git |
-| Repository Hosting | GitHub |
+| Layer                | Technology                               |
+| -------------------- | ---------------------------------------- |
+| Frontend             | React.js                                 |
+| Styling              | Tailwind CSS                             |
+| Build Tool           | Vite                                     |
+| Frontend Hosting     | Vercel                                   |
+| Backend              | FastAPI                                  |
+| Backend Language     | Python 3.12                              |
+| Backend Hosting      | Heroku                                   |
+| LLM Provider         | Groq                                     |
+| LLM Model            | `openai/gpt-oss-20b`                     |
+| Embedding Runtime    | FastEmbed / ONNX                         |
+| Embedding Model      | `sentence-transformers/all-MiniLM-L6-v2` |
+| Embedding Dimensions | 384                                      |
+| Database             | PostgreSQL                               |
+| Vector Search        | pgvector                                 |
+| PostgreSQL Driver    | psycopg                                  |
+| Version Control      | Git                                      |
+| Repository Hosting   | GitHub                                   |
 
 ---
 
@@ -501,44 +595,84 @@ This reduces the risk of incorrect financial arithmetic being generated by the L
 
 # Main Request Flows
 
+## Unified Assistant
+
+```text
+User Question
+      |
+      v
+POST /assistant/chat
+      |
+      v
+Deterministic Capability Routing
+      |
+ +----+-------------+-------------+
+ |                  |             |
+ v                  v             v
+Statement         Recurring      Policy
+ |                  |             |
+ v                  v             v
+Verified Python   Python Rules   RAG Retrieval
+ |                  |             |
+ +------------------+-------------+
+                    |
+                    v
+             Unified Answer
+             + provenance
+```
+
+For statement conversations, the frontend can send recent `conversation_history`. That history helps recover safe follow-up intent, but financial values are always recalculated from the supplied statement data.
+
+---
+
 ## Statement Upload
 
 ```text
 CSV Upload
-    ↓
-FastAPI /statement/upload
-    ↓
+    |
+    v
+POST /statement/upload
+    |
+    v
 CSV validation
-    ↓
+    |
+    v
 statement_parser.py
-    ↓
+    |
+    v
 Structured transactions
-    ↓
+    |
+    v
 statement_analysis.py
-    ↓
+    |
+    v
 Financial summary
-    ↓
+    |
+    v
 JSON response
 ```
 
 ---
 
-## Statement Question
+## Statement Intelligence
 
 ```text
 User Question + Statement Data
-           ↓
-POST /statement/ask
-           ↓
-Question filtering / month extraction
-           ↓
-Is it a simple exact question?
+           |
+           v
+Statement capability
+           |
+           v
+Month / scope resolution
+           |
+           v
+Deterministic question?
        /             \
      Yes              No
       |                |
       v                v
-Deterministic      Verified Python
-Python Answer         Facts
+Verified Python    Verified Python
+Answer             Facts
                        |
                        v
                     Groq
@@ -550,25 +684,31 @@ Python Answer         Facts
                  Final Answer
 ```
 
+Simple exact questions are answered directly through deterministic Python logic. Open-ended or compound questions may use Groq for qualitative interpretation, while verified Python facts remain authoritative.
+
 ---
 
 ## Recurring Payment Analysis
 
 ```text
-CSV Upload
-    ↓
-POST /statement/subscriptions
-    ↓
-Statement Parser
-    ↓
+Statement Data
+    |
+    v
+Recurring capability
+    |
+    v
 Debit transactions
-    ↓
+    |
+    v
 Description normalization
-    ↓
+    |
+    v
 Group matching descriptions
-    ↓
+    |
+    v
 Repeated description?
-    ↓
+    |
+    v
 Recurring-payment candidate
 ```
 
@@ -578,31 +718,63 @@ Recurring-payment candidate
 
 ```text
 Policy Question
-      ↓
-POST /policy/ask
-      ↓
+      |
+      v
+Policy capability
+      |
+      v
 FastEmbed query embedding
-      ↓
+      |
+      v
 MiniLM 384D vector
-      ↓
+      |
+      v
 PostgreSQL + pgvector
-      ↓
+      |
+      v
 Top 3 vector matches
-      ↓
+      |
+      v
 Distance <= 0.75
-      ↓
-Relevant context
-      ↓
+      |
+      v
+Relevant public context
+      |
+      v
 Groq
-      ↓
-Grounded answer
-      ↓
-Public source links
+      |
+      v
+Grounded answer + sources
 ```
 
 ---
 
 # Main API Endpoints
+
+## Unified Assistant
+
+```http
+POST /assistant/chat
+```
+
+Primary conversational endpoint used by the production frontend.
+
+Request capabilities:
+
+- Verified statement intelligence
+- Deterministic recurring-payment detection
+- Public-policy RAG
+- Optional recent conversation history for safe statement follow-ups
+
+Response metadata includes:
+
+- `capability`
+- `method`
+- `answer`
+- `sources`
+- `structured_data`
+
+---
 
 ## Health
 
@@ -627,15 +799,17 @@ CSV file
 
 ---
 
-## Ask About Statement
+## Backward-Compatible Statement Q&A
 
 ```http
 POST /statement/ask
 ```
 
+Supports statement data plus optional `conversation_history`.
+
 ---
 
-## Recurring-Payment Analysis
+## Backward-Compatible Recurring-Payment Analysis
 
 ```http
 POST /statement/subscriptions
@@ -650,7 +824,7 @@ CSV file
 
 ---
 
-## Policy Q&A
+## Backward-Compatible Policy Q&A
 
 ```http
 POST /policy/ask
@@ -697,11 +871,11 @@ Production performance was measured using Lighthouse against the deployed Vercel
 
 Three repeated performance runs produced:
 
-| Run | Performance | FCP | LCP | TBT | CLS |
-|---|---:|---:|---:|---:|---:|
-| 1 | 89 | 1.7 s | 1.7 s | 10 ms | 0 |
-| 2 | 95 | 1.2 s | 1.2 s | 10 ms | 0 |
-| 3 | 93 | 1.3 s | 1.3 s | 20 ms | 0 |
+| Run | Performance |   FCP |   LCP |   TBT | CLS |
+| --- | ----------: | ----: | ----: | ----: | --: |
+| 1   |          89 | 1.7 s | 1.7 s | 10 ms |   0 |
+| 2   |          95 | 1.2 s | 1.2 s | 10 ms |   0 |
+| 3   |          93 | 1.3 s | 1.3 s | 20 ms |   0 |
 
 Median performance score:
 
@@ -736,12 +910,12 @@ Development/demo statement data is synthetic.
 
 Expected analysis for the standard demonstration statement:
 
-| Metric | Result |
-|---|---:|
-| Transactions | 10 |
-| Total Debit | 31,500 |
-| Total Credit | 160,000 |
-| Opening Balance | 50,000 |
+| Metric          |  Result |
+| --------------- | ------: |
+| Transactions    |      10 |
+| Total Debit     |  31,500 |
+| Total Credit    | 160,000 |
+| Opening Balance |  50,000 |
 | Closing Balance | 178,500 |
 
 Expected recurring-payment candidates:
@@ -926,46 +1100,90 @@ Core backend validation:
 
 ```powershell
 python -m compileall backend -q
-python -m unittest discover -s backend\tests -t . -v
+python -m unittest discover -s backend	ests -t . -v
 python -m pip check
 git diff --check
 ```
 
-Automated backend result at the production-functional checkpoint:
+Current automated backend result:
 
 ```text
-38 tests passed
+153 tests passed
 ```
 
-Production regression verified:
+Current regression coverage includes:
 
 ```text
-PRODUCTION_UPLOAD_OK
-PRODUCTION_DETERMINISTIC_QA_OK
-PRODUCTION_GUARDED_QA_OK
-PRODUCTION_MONTH_FILTER_OK
-PRODUCTION_RECURRING_OK
-NO_R14_ON_CURRENT_RELEASE
-PRODUCTION_REGRESSION_COMPLETE
+API_INPUT_HARDENING_OK
+API_FAILURE_HANDLING_OK
+DETERMINISTIC_STATEMENT_QA_OK
+NATURAL_FINANCIAL_LANGUAGE_OK
+MONTH_FILTERING_OK
+MULTI_TURN_STATEMENT_FOLLOW_UP_OK
+CROSS_CAPABILITY_FOLLOW_UP_OK
+RECURRING_PAYMENT_RULES_OK
+POLICY_RAG_OK
+LLM_TRUST_BOUNDARIES_OK
+UNIFIED_ASSISTANT_ROUTING_OK
+NUMERIC_GUARD_OK
 ```
 
-Frontend production hardening later added SEO validation and Lighthouse performance testing.
+The current backend commit `ebf1a47` passed GitHub Actions CI.
+
+The latest production backend deployment was verified as:
+
+```text
+HEROKU_RELEASE_V16_OK
+HEALTH_ENDPOINT_OK
+UNIFIED_ASSISTANT_SMOKE_OK
+CROSS_CAPABILITY_FOLLOW_UP_OK
+```
+
+Production mixed-capability regression:
+
+```text
+August spending question
+        |
+        v
+Recurring-payment question
+        |
+        v
+"What about July?"
+        |
+        v
+Earlier statement intent recovered
+        |
+        v
+July spending recalculated deterministically
+```
+
+Frontend production hardening also includes SEO validation and Lighthouse performance testing.
 
 ---
 
 # Reliability & Production Hardening
 
-| Risk / Failure Mode | Mitigation |
-|---|---|
-| LLM quota / availability | Final LLM path migrated to Groq; failures return controlled backend errors |
-| Incorrect LLM financial arithmetic | Financial values are calculated deterministically in Python |
-| Heroku memory pressure | PyTorch-heavy embedding runtime replaced with FastEmbed / ONNX |
-| Weak policy retrieval | Distance threshold enforced before generation |
-| Unsupported policy question | Fail-closed response instead of hallucinating policy |
-| Duplicate policy reseeding | Corpus replacement is handled transactionally |
-| Statement-format variation | CSV parser includes validation and format handling |
-| Frontend discoverability | SEO metadata, sitemap, robots configuration and structured data added |
-| Frontend loading quality | Production Lighthouse performance validation completed |
+| Risk / Failure Mode                | Mitigation                                                                 |
+| ---------------------------------- | -------------------------------------------------------------------------- |
+| LLM quota / availability           | Final LLM path migrated to Groq; failures return controlled backend errors |
+| Incorrect LLM financial arithmetic | Financial values are calculated deterministically in Python                |
+| Heroku memory pressure             | PyTorch-heavy embedding runtime replaced with FastEmbed / ONNX             |
+| Weak policy retrieval              | Distance threshold enforced before generation                              |
+| Unsupported policy question        | Fail-closed response instead of hallucinating policy                       |
+| Duplicate policy reseeding         | Corpus replacement is handled transactionally                              |
+| Statement-format variation         | CSV parser includes validation and format handling                         |
+| Frontend discoverability           | SEO metadata, sitemap, robots configuration and structured data added      |
+| Frontend loading quality           | Production Lighthouse performance validation completed                     |
+
+---
+
+# Prototype Disclosure
+
+The production interface keeps the following disclosures visible:
+
+> **Internship prototype — not an official Allied Bank customer website.**
+>
+> **This independent student project is a synthetic-data demonstration created for educational and internship purposes. Do not upload real customer statements, credentials, or confidential information.**
 
 ---
 
@@ -1036,35 +1254,52 @@ Additional constraints:
 ```text
 27 Aug 2026
 Development started
-
 10 Sep 2026
 Production-functional milestone reached
 Core application deployed and regression-tested
-
 15–16 Sep 2026
 SEO, social metadata and frontend performance hardening
-
-16 Sep 2026
-Architecture review and final documentation phase started
-
+17–19 Sep 2026
+Multi-turn statement conversation work
+Unified banking-assistant UX and routing
+22 Sep 2026
+Natural financial-language hardening
+Unified capability-routing hardening
+Cross-capability follow-up hardening
+153-test backend suite verified
+GitHub Actions CI verified
+Heroku release v16 verified
 25 Sep 2026
 Original internship handover window
 ```
 
-The **10 September milestone represents completion of the production-functional application**, while the remaining internship period is being used for production polish, architecture documentation, validation, and final handover preparation.
+The **10 September milestone** represents completion of the original production-functional application.
+
+The remaining internship period has been used to convert that functional build into a more polished conversational banking-intelligence prototype with stronger deterministic routing, safer multi-turn behavior, broader regression coverage, updated documentation, and production validation.
 
 ---
 
 # Current Project Position
 
-The **ABL Customer Statement Intelligence Suite — App 1 of 2** is currently:
+The **ABL Customer Statement Intelligence Suite** is currently:
 
 ```text
 PRODUCTION FUNCTIONAL
+UNIFIED ASSISTANT DEPLOYED
+153 BACKEND TESTS PASSING
+GITHUB ACTIONS CI PASSING
+HEROKU RELEASE V16 VERIFIED
 SEO HARDENED
 PERFORMANCE VALIDATED
-ARCHITECTURE DOCUMENTATION COMPLETE
-FINAL HANDOVER PREPARATION IN PROGRESS
+FINAL DOCUMENTATION & HANDOVER PREPARATION IN PROGRESS
 ```
 
-All three core modules are deployed and functional through the Vercel frontend and FastAPI/Heroku backend.
+The production application now exposes one unified conversational banking-intelligence experience while retaining three specialized backend capabilities:
+
+```text
+Verified Statement Intelligence
+Deterministic Recurring-Payment Detection
+Grounded Public-Policy RAG
+```
+
+The system remains an internship prototype using synthetic statement data and public policy information only.
