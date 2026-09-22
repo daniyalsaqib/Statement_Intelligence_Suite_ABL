@@ -1,0 +1,28 @@
+# ---------------------------------------------------------
+# PROJECT-WIDE EDITOR FORMATTING RULES
+# ---------------------------------------------------------
+#
+# VS Code aur doosre compatible editors ko same indentation,
+# whitespace aur line-ending rules follow karwata hai.
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+indent_style = space
+trim_trailing_whitespace = true
+
+[*.py]
+indent_size = 4
+
+[*.{js,jsx,json,css,html}]
+indent_size = 2
+
+[*.{md,yml,yaml}]
+indent_size = 2
+
+# Markdown mein intentional trailing spaces ho sakti hain.
+[*.md]
+trim_trailing_whitespace = false

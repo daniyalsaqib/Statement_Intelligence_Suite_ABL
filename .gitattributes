@@ -1,0 +1,20 @@
+# ---------------------------------------------------------
+# CONSISTENT GIT LINE ENDINGS
+# ---------------------------------------------------------
+#
+# Repository text files ko LF mein store karte hain.
+# Isse Windows CRLF vs Linux LF ki wajah se unnecessary
+# whole-file Git diffs avoid hote hain.
+
+* text=auto
+
+*.py   text eol=lf
+*.js   text eol=lf
+*.jsx  text eol=lf
+*.json text eol=lf
+*.css  text eol=lf
+*.html text eol=lf
+*.md   text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+*.toml text eol=lf

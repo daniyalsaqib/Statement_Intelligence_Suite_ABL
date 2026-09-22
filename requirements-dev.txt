@@ -1,2 +1,13 @@
+# ---------------------------------------------------------
+# DEVELOPMENT-ONLY DEPENDENCIES
+# ---------------------------------------------------------
+#
+# Production dependencies requirements.txt se inherit hoti hain.
+# Ye file local development / testing / formatting tools ke liye hai.
+
 -r requirements.txt
+
 httpx2==2.13.0
+
+# Python code formatter.
+black==26.5.1

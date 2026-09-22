@@ -1,0 +1,6 @@
+# Generated / dependency directories should never be formatted.
+
+frontend/node_modules
+frontend/dist
+.venv
+.git
